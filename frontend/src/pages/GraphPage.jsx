@@ -6,7 +6,7 @@ import {
   UI_SECTION_NEWLINE,
   VISUALIZATION_OPTIONS,
 } from '../graphConstants'
-import JSONbig from 'json-bigint';
+import JSONbig from 'json-bigint'
 
 function applySelection(network, nodeId) {
   const liveNodes = network.body.data.nodes

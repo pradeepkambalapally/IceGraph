@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/icegraph.png'
+import JSONbig from 'json-bigint'
 
 export default function HomePage() {
   const [tableName, setTableName] = useState('')
