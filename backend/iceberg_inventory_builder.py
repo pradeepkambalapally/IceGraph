@@ -55,14 +55,18 @@ class IcebergInventoryBuilder:
         try:
             self._timed("find_search_cutoff", self._find_search_cutoff)
         except Exception as e:
-            logger.error(f"[{self._table_name}] find_search_cutoff failed: {e}")
+            logger.error(
+                f"[{self._table_name}] find_search_cutoff failed", exc_info=True
+            )
             self._errors["find_search_cutoff"] = str(e)
             self._set_full_history_cutoff()
 
         try:
             self._timed("collect_snapshots", self._collect_snapshots)
         except Exception as e:
-            logger.error(f"[{self._table_name}] collect_snapshots failed: {e}")
+            logger.error(
+                f"[{self._table_name}] collect_snapshots failed", exc_info=True
+            )
             self._errors["collect_snapshots"] = str(e)
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
@@ -80,9 +84,8 @@ class IcebergInventoryBuilder:
                 try:
                     future.result()
                 except Exception as e:
-                    logger.error(f"[{self._table_name}] {name} failed: {e}")
+                    logger.error(f"[{self._table_name}] {name} failed", exc_info=True)
                     self._errors[name] = str(e)
-        self._clean_cache()
 
         logger.info(
             f"[{self._table_name}] total collect took {time.time() - total_start:.2f}s"
@@ -113,6 +116,10 @@ class IcebergInventoryBuilder:
                 self._main_metadata_file["table-name"] = self._table_name
                 metadata_specs = self._main_metadata_file
             except Exception as e:
+                logger.error(
+                    f"[{self._table_name}] Metadata specs error for {main_meta_path}",
+                    exc_info=True,
+                )
                 self._errors[main_meta_path] = f"Metadata specs error: {e}"
 
         return {
@@ -120,10 +127,6 @@ class IcebergInventoryBuilder:
             "errors": self._errors,
             "metadata_specs": metadata_specs,
         }
-
-    def _clean_cache(self):
-        if self._manifests_to_ignore_df is not None:
-            self._manifests_to_ignore_df.unpersist()
 
     def _find_search_cutoff(self):
         if not self._start_snapshot_id and not self._end_snapshot_id:
@@ -146,13 +149,11 @@ class IcebergInventoryBuilder:
             raise ValueError("Start snapshot is after end snapshot")
 
     def _set_start_cutoffs(self):
-        row = self._spark.sql(
-            f"""
+        row = self._spark.sql(f"""
             SELECT date_format(committed_at, "yyyy-MM-dd'T'HH:mm:ss.SSS") AS committed_at, parent_id
             FROM {self._table_name}.snapshots
             WHERE snapshot_id = {self._start_snapshot_id}
-        """
-        ).first()
+        """).first()
 
         if not row:
             self._start_snapshot_cutoff = arrow.Arrow.min
@@ -162,13 +163,11 @@ class IcebergInventoryBuilder:
 
         self._start_snapshot_cutoff = to_arrow_tz(row.committed_at, self._spark_tz)
 
-        meta_row = self._spark.sql(
-            f"""
+        meta_row = self._spark.sql(f"""
             SELECT date_format(MIN(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
             FROM {self._table_name}.metadata_log_entries
             WHERE latest_snapshot_id = {self._start_snapshot_id}
-        """
-        ).first()
+        """).first()
 
         self._start_metadata_cutoff = (
             to_arrow_tz(meta_row.ts, self._spark_tz)
@@ -182,26 +181,34 @@ class IcebergInventoryBuilder:
             self._manifests_to_ignore_df = self._create_empty_manifests_to_ignore_df()
         else:
             try:
-                self._manifests_to_ignore_df = self._spark.sql(
-                    f"""
-                    SELECT path
-                    FROM {self._table_name}.manifests
-                    VERSION AS OF {parent_id}
-                """
+                parent_manifest_list = self._spark.sql(f"""
+                    SELECT manifest_list
+                    FROM {self._table_name}.snapshots
+                    WHERE snapshot_id = {parent_id}
+                    """).first()["manifest_list"]
+
+                self._manifests_to_ignore_df = (
+                    self._spark.read.format("avro")
+                    .load(parent_manifest_list)
+                    .select(F.col("manifest_path").alias("path"))
                 )
-            except Exception:
+
+            except Exception as e:
+                logger.warning(
+                    f"[{self._table_name}] Failed to load parent manifest list for snapshot {parent_id}",
+                    exc_info=True,
+                )
+
                 self._manifests_to_ignore_df = (
                     self._create_empty_manifests_to_ignore_df()
                 )
 
     def _set_end_cutoffs(self):
-        row = self._spark.sql(
-            f"""
+        row = self._spark.sql(f"""
             SELECT date_format(committed_at, "yyyy-MM-dd'T'HH:mm:ss.SSS") AS committed_at
             FROM {self._table_name}.snapshots
             WHERE snapshot_id = {self._end_snapshot_id}
-        """
-        ).first()
+        """).first()
 
         if not row:
             self._end_snapshot_cutoff = arrow.Arrow.max
@@ -210,13 +217,11 @@ class IcebergInventoryBuilder:
 
         self._end_snapshot_cutoff = to_arrow_tz(row.committed_at, self._spark_tz)
 
-        meta_row = self._spark.sql(
-            f"""
+        meta_row = self._spark.sql(f"""
             SELECT date_format(MAX(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
             FROM {self._table_name}.metadata_log_entries
             WHERE latest_snapshot_id = {self._end_snapshot_id}
-        """
-        ).first()
+        """).first()
 
         self._end_metadata_cutoff = (
             to_arrow_tz(meta_row.ts, self._spark_tz)
@@ -273,6 +278,10 @@ class IcebergInventoryBuilder:
                     else metadata_files_df.unionByName(df, allowMissingColumns=True)
                 )
             except Exception as e:
+                logger.error(
+                    f"[{self._table_name}] Metadata file read error for {file}",
+                    exc_info=True,
+                )
                 self._errors[file] = f"Metadata file read error: {e}"
 
         if metadata_files_df is None:
@@ -292,6 +301,10 @@ class IcebergInventoryBuilder:
                     self._main_metadata_file = get_json_metadata_from_path(row.file)
                     self._main_metadata_file["file"] = row.file
                 except Exception as e:
+                    logger.error(
+                        f"[{self._table_name}] Main metadata file read error for {row.file}",
+                        exc_info=True,
+                    )
                     self._errors[row.file] = f"Main metadata file read error: {e}"
 
             refs = json.loads(row.refs) if getattr(row, "refs", None) else {}
@@ -428,15 +441,24 @@ class IcebergInventoryBuilder:
         result = None
         for snapshot in self._snapshot_rows:
             snap_id = snapshot.snapshot_id
-            df = self._spark.sql(
-                f"SELECT *, {snap_id} as _snap_id"
-                f" FROM {self._table_name}.manifests VERSION AS OF {snap_id}"
+            manifest_list_path = snapshot.manifest_list
+
+            df = (
+                self._spark.read.format("avro")
+                .load(manifest_list_path)
+                .select(
+                    F.col("manifest_path").alias("path"),
+                    F.col("added_snapshot_id"),
+                    F.lit(snap_id).alias("_snap_id"),
+                )
             )
+
             result = (
                 df
                 if result is None
                 else result.unionByName(df, allowMissingColumns=True)
             )
+
         return result
 
     def _fill_snapshot_child_files(self, manifest_rows):
@@ -470,6 +492,10 @@ class IcebergInventoryBuilder:
                     else avro_df.unionByName(df, allowMissingColumns=True)
                 )
             except Exception as e:
+                logger.error(
+                    f"[{self._table_name}] Avro read error for {m_row.path}",
+                    exc_info=True,
+                )
                 self._errors[m_row.path] = f"Avro read error: {e}"
         return avro_df.collect() if avro_df is not None else []
 
@@ -515,7 +541,7 @@ class IcebergInventoryBuilder:
                 "file_path": m_path,
                 "added_snapshot_id": m_row.added_snapshot_id,
                 "partitions": UI_NEWLINE.join(all_partitions),
-                "total_rows": total_rows,
+                "total_rows_in_downstreem_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],
                 "deleted_child_files": child_data_paths_status["deleted"],
                 "child_files": child_data_paths_status["existing"]
