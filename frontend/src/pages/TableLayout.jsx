@@ -33,6 +33,17 @@ export default function TableLayout() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [graphData, setGraphData] = useState(null)
+  const [jobId, setJobId] = useState(null)
+
+  const pollIntervalRef = useRef(null)
+
+  const clearPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }
+
 
   useEffect(() => {
     if (selectionDetail && detailPanelRef.current) {
@@ -59,6 +70,62 @@ export default function TableLayout() {
     return { nodes: styledNodes, edges: styledEdges, metadata: data.metadata, errors: data.errors || {} }
   }
 
+  const submitGraphJob = async (table, start, end) => {
+    try {
+      const body = new URLSearchParams()
+      body.append('table_name', table)
+      if (start) body.append('start_snapshot_id', start)
+      if (end) body.append('end_snapshot_id', end)
+
+      const res = await fetch('/api/v1/graph-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to submit job')
+      }
+
+      const result = await res.json()
+      setJobId(result.key)
+
+    } catch (err) {
+      setError(err.message || 'Failed to submit job')
+      setLoading(false)
+    }
+  }
+
+  const pollJobStatus = async (jid) => {
+    try {
+      const res = await fetch(`/api/v1/graph-data/${jid}`)
+      if (res.status === 200) {
+        const text = await res.text()
+        const data = JSONbig({ storeAsString: true }).parse(text)
+
+        sessionStorage.setItem(cacheKey, text)
+        setGraphData(buildGraphData(data))
+        setLoading(false)
+        setJobId(null)
+
+        clearPolling()
+      } else if (res.status === 400) {
+        setError(result.error || 'Job failed')
+        setLoading(false)
+        setJobId(null)
+
+        clearPolling()
+      }
+
+    } catch (err) {
+      setError(err.message || 'Failed to check job status')
+      setLoading(false)
+      setJobId(null)
+
+      clearPolling()
+    }
+  }
+
   useEffect(() => {
     if (!tableName) {
       setError('No table name provided.')
@@ -78,37 +145,21 @@ export default function TableLayout() {
       }
     }
 
-    const body = new URLSearchParams({ table_name: tableName, start_snapshot_id: startSnapshot, end_snapshot_id: endSnapshot })
-    const controller = new AbortController()
+    submitGraphJob(tableName, startSnapshot, endSnapshot)
 
-    fetch('/api/v1/graph-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        const text = await res.text()
-        if (!res.ok) throw new Error("Request to backend failed")
-
-        const data = JSONbig({ storeAsString: true }).parse(text)
-        console.log(data)
-
-        sessionStorage.setItem(cacheKey, text)
-        return data
-      })
-      .then((data) => {
-        setGraphData(buildGraphData(data))
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (err.name === 'AbortError') return
-        setError(err.message || 'An unexpected error occurred.')
-        setLoading(false)
-      })
-
-    return () => controller.abort()
   }, [tableName, startSnapshot, endSnapshot])
+
+  useEffect(() => {
+    if (!jobId) return
+
+    pollJobStatus(jobId)
+
+    pollIntervalRef.current = setInterval(() => {
+      pollJobStatus(jobId)
+    }, 1000)
+
+    return clearPolling
+  }, [jobId])
 
   if (loading) {
     return (
@@ -122,9 +173,9 @@ export default function TableLayout() {
   }
 
   if (error) {
-    let errorDisplay;
+    let errorDisplay
     try {
-      const parsed = JSON.parse(error);
+      const parsed = JSONbig({ storeAsString: true }).parse(error)
       errorDisplay = (
         <div className="text-left mt-4 text-xs font-mono space-y-1">
           {Object.entries(parsed).map(([key, val]) => (
@@ -134,9 +185,9 @@ export default function TableLayout() {
             </div>
           ))}
         </div>
-      );
+      )
     } catch {
-      errorDisplay = <p className="text-sm">{error}</p>;
+      errorDisplay = <p className="text-sm">{error}</p>
     }
 
     return (
@@ -152,7 +203,7 @@ export default function TableLayout() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   const metadata = graphData.metadata
@@ -161,6 +212,7 @@ export default function TableLayout() {
     if (!metadata) return
     let data = null
     let label = ''
+
     if (type === 'schema') {
       data = metadata.schemas?.find(s => s['schema-id'] === id)
       label = `Schema ID: ${id}`
@@ -171,6 +223,7 @@ export default function TableLayout() {
       data = metadata['sort-orders']?.find(s => s['order-id'] === id)
       label = `Order ID: ${id}`
     }
+
     if (data) setSelectionDetail({ label, data })
   }
 

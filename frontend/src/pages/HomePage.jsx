@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logo from '../assets/icegraph.png'
+import JSONbig from 'json-bigint'
 
 export default function HomePage() {
   const [tableName, setTableName] = useState('')
@@ -10,7 +11,7 @@ export default function HomePage() {
   useEffect(() => {
     const savedHistory = localStorage.getItem('tableHistory')
     if (savedHistory) {
-      setHistory(JSON.parse(savedHistory))
+      setHistory(JSONbig({ storeAsString: true }).parse(savedHistory))
     }
   }, [])
 

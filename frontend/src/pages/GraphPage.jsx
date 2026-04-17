@@ -6,6 +6,7 @@ import {
   UI_SECTION_NEWLINE,
   VISUALIZATION_OPTIONS,
 } from '../graphConstants'
+import JSONbig from 'json-bigint'
 
 function applySelection(network, nodeId) {
   const liveNodes = network.body.data.nodes
@@ -236,7 +237,7 @@ export default function GraphPage() {
             {sticky.rows.map((r, i) => {
               let displayValue = r.value
               const tryParseJson = (str) => {
-                try { return JSON.parse(str) } catch { return undefined }
+                try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
               }
               const asPythonToJson = (str) => str
                 .replace(/'/g, '"')
