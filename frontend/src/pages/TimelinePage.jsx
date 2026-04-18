@@ -213,12 +213,6 @@ export default function TimelinePage() {
     }
   }, [])
 
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollLeft = el.scrollWidth
-  }, [events])
-
   return (
     <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
 
