@@ -3,10 +3,10 @@ import arrow
 from datetime import timezone
 from spark_connect import open_spark_connect_session
 
-from constants import MAX_SNAPSHOTS_TO_SHOW
 
-
-def collect_snapshot_map(full_table_name: str) -> Dict[str, str]:
+def collect_snapshot_map(
+    full_table_name: str, max_snapshots_to_show: int
+) -> Dict[str, str]:
     spark = open_spark_connect_session()
 
     spark_tz = spark.conf.get("spark.sql.session.timeZone")
@@ -17,7 +17,7 @@ def collect_snapshot_map(full_table_name: str) -> Dict[str, str]:
             snapshot_id
         FROM {full_table_name}.snapshots
         ORDER BY committed_at DESC
-    """).limit(MAX_SNAPSHOTS_TO_SHOW)
+    """).limit(max_snapshots_to_show)
 
     return {
         arrow.get(row.snapshot_timestamp)

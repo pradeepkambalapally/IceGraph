@@ -91,6 +91,12 @@ We will create an `.env` file in the root of the backend directory:
 SPARK_REMOTE=sc://localhost:15002 # Our local testing spark, If you use docker, change it to your ip.
 ```
 
+If you want to change the default values of the application, you can set the following environment variables:
+
+- `MAX_NUMBER_OF_GRAPHS_TO_COMPUTE`: The maximum number of graphs to compute in parallel. Default is 15.
+- `MAX_SNAPSHOTS_TO_SHOW`: The maximum number of snapshots to show in the snapshot selection page. Default is 2000.
+- `COMPUTE_CLEANUP_TIME_SECONDS`: The time to wait before cleaning up the computed graphs. Default is 12.
+
 ### 3. Run
 
 Open one terminal in the backend directory and run:

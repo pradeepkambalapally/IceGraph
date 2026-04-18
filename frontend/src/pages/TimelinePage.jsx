@@ -138,7 +138,7 @@ export default function TimelinePage() {
       .filter(n => n.type === FileType.METADATA || n.type === FileType.MAIN_METADATA)
       .map(n => ({ details: parseDetails(n.details) }))
       .filter(n => n.details.timestamp)
-      .sort((a, b) => new Date(b.details.timestamp) - new Date(a.details.timestamp))
+      .sort((a, b) => new Date(a.details.timestamp) - new Date(b.details.timestamp))
 
     const snapMap = {}
     allNodes
@@ -149,7 +149,7 @@ export default function TimelinePage() {
       })
 
     const timeline = metaNodes.map(({ details }, i) => {
-      const prev = i < metaNodes.length - 1 ? metaNodes[i + 1].details : null
+      const prev = i > 0 ? metaNodes[i - 1].details : null
       const type = !prev
         ? 'init'
         : details.snapshot_id !== prev.snapshot_id
@@ -213,6 +213,12 @@ export default function TimelinePage() {
     }
   }, [])
 
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollLeft = el.scrollWidth
+  }, [events])
+
   return (
     <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
 
@@ -238,13 +244,13 @@ export default function TimelinePage() {
                       {formatDuration(events[i - 1].details.timestamp, events[i].details.timestamp)}
                     </div>
                     <div className="flex items-center">
+                      <div className="w-14 h-px bg-[#2d3748]" />
                       <div style={{
                         width: 0, height: 0,
                         borderTop: '4px solid transparent',
                         borderBottom: '4px solid transparent',
-                        borderRight: '7px solid #2d3748',
+                        borderLeft: '7px solid #2d3748',
                       }} />
-                      <div className="w-14 h-px bg-[#2d3748]" />
                     </div>
                   </div>
                 )}

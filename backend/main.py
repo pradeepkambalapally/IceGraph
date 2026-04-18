@@ -1,4 +1,5 @@
 import re
+import os
 import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -11,6 +12,7 @@ from constants import (
     APPLICATION_PORT,
     COMPUTE_CLEANUP_TIME_SECONDS,
     MAX_NUMBER_OF_GRAPHS_TO_COMPUTE,
+    MAX_SNAPSHOTS_TO_SHOW,
 )
 from iceberg_inventory_builder import IcebergInventoryBuilder
 from iceberg_metadata_snapshot_map import collect_snapshot_map
@@ -24,7 +26,15 @@ app = Flask(__name__, static_url_path="/static")
 job_lock = threading.Lock()
 jobs: dict[str, dict] = {}
 
-executor_pool = ThreadPoolExecutor(max_workers=MAX_NUMBER_OF_GRAPHS_TO_COMPUTE)
+max_number_of_graphs_to_compute = int(
+    os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE", MAX_NUMBER_OF_GRAPHS_TO_COMPUTE)
+)
+compute_cleanup_time_seconds = int(
+    os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS)
+)
+max_snapshots_to_show = int(os.getenv("MAX_SNAPSHOTS_TO_SHOW", MAX_SNAPSHOTS_TO_SHOW))
+
+executor_pool = ThreadPoolExecutor(max_workers=max_number_of_graphs_to_compute)
 
 
 def _safe_update_job(job_id, **fields):
@@ -41,7 +51,7 @@ def _cleanup_job(job_id):
 
 def _schedule_cleanup(job_id, is_in_lock_block=False):
     timer = threading.Timer(
-        COMPUTE_CLEANUP_TIME_SECONDS,
+        compute_cleanup_time_seconds,
         lambda job_id=job_id: _cleanup_job(job_id),
     )
 
@@ -93,7 +103,7 @@ def snapshot_map(table_name):
     try:
         verify_iceberg_table(table_name)
 
-        result = collect_snapshot_map(table_name)
+        result = collect_snapshot_map(table_name, max_snapshots_to_show)
 
         return jsonify(result)
 
