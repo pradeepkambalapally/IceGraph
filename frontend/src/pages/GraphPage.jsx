@@ -95,8 +95,10 @@ export default function GraphPage() {
       const x = parseInt(level) * levelSeparation
       const totalHeight = (nodes.length - 1) * nodeSpacing
       nodes.forEach((node, i) => {
-        node.fx = x
-        node.fy = (i * nodeSpacing) - (totalHeight / 2)
+        const fx = x
+        const fy = (i * nodeSpacing) - (totalHeight / 2)
+        node.fx = node.originalFx = fx
+        node.fy = node.originalFy = fy
       })
     })
 
@@ -112,8 +114,22 @@ export default function GraphPage() {
 
   const resetView = useCallback(() => {
     deselectNode()
+
+    // Restore original positions for all nodes
+    graphData.nodes.forEach(node => {
+      node.fx = node.originalFx
+      node.fy = node.originalFy
+    })
+
     fgRef.current?.zoomToFit(500, 50)
-  }, [deselectNode])
+  }, [deselectNode, graphData])
+
+  useEffect(() => {
+    // Reheat simulation on mount to ensure fluid interaction from the first load
+    if (fgRef.current) {
+      fgRef.current.d3ReheatSimulation()
+    }
+  }, [])
 
   useEffect(() => {
     if (!fgRef.current || graphData.nodes.length === 0) return
@@ -145,6 +161,56 @@ export default function GraphPage() {
     history.pushState({ graphSelection: node.id }, '')
   }, [isInspectMode, graphData])
 
+  const paintNode = useCallback((node, ctx, globalScale) => {
+    const label = node.label || String(node.id)
+    const fontSize = 80
+
+    ctx.font = `500 ${fontSize}px "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"`
+
+    const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(String(node.id))
+    const color = isHighlighted ? node.color : '#333333'
+
+    const textMetrics = ctx.measureText(label)
+    const padding = 40
+    const w = textMetrics.width + padding * 2
+    const h = fontSize + padding
+
+    // Draw Background Pill
+    ctx.beginPath()
+    // Align to pixel grid for sharpness
+    const x = Math.round(node.x - w / 2)
+    const y = Math.round(node.y - h / 2)
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, 4)
+    } else {
+      ctx.rect(x, y, w, h) // Fallback to rect if roundRect missing
+    }
+
+    ctx.fillStyle = isHighlighted ? color : '#2d3748'
+    ctx.fill()
+
+    ctx.strokeStyle = isHighlighted ? '#ffffff' : '#4a5568'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    // Draw Text
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = isHighlighted ? '#ffffff' : '#a0aec0'
+    ctx.fillText(label, node.x, node.y)
+
+    // Cache metrics for pointer area
+    node.__pillW = w
+    node.__pillH = h
+  }, [highlightNodes])
+
+  const paintPointerArea = useCallback((node, color, ctx) => {
+    const w = node.__pillW || 40
+    const h = node.__pillH || 20
+    ctx.fillStyle = color
+    ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h)
+  }, [])
+
   const parseStickyDetails = (details) => {
     if (!details) return { title: '', rows: [] }
     const splitToken = UI_SECTION_NEWLINE === '\n' ? /\\n|\n/ : UI_SECTION_NEWLINE
@@ -175,8 +241,9 @@ export default function GraphPage() {
         ref={fgRef}
         graphData={graphData}
         backgroundColor="#00000000" // transparent to see background image
-        nodeLabel="label"
-        nodeRelSize={70}
+        nodeLabel={() => ""}
+        nodeCanvasObject={paintNode}
+        nodePointerAreaPaint={paintPointerArea}
         linkWidth={1}
         nodeColor={n => {
           if (highlightNodes.size > 0 && !highlightNodes.has(String(n.id))) return '#333'
