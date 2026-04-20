@@ -53,6 +53,7 @@ export default function GraphPage() {
 
   const location = useLocation()
   const fgRef = useRef()
+  const hasInitiallyZoomed = useRef(false)
 
   const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [isInspectMode, setIsInspectMode] = useState(true)
@@ -108,7 +109,6 @@ export default function GraphPage() {
   const deselectNode = useCallback(() => {
     setHighlightNodes(new Set())
     setStickyNode(null)
-    setIsFullView(true)
     history.replaceState({ graphSelection: null }, '')
   }, [])
 
@@ -138,18 +138,10 @@ export default function GraphPage() {
     if (initialNodeId) {
       const node = graphData.nodes.find(n => String(n.id) === String(initialNodeId))
       if (node) {
-        setStickyNode(node)
-        const lineage = getLineage(node.id, graphData.nodes, graphData.links)
-        setHighlightNodes(lineage)
-        setIsFullView(false)
-        fgRef.current.centerAt(node.fx, node.fy, 500)
-        fgRef.current.zoom(1.5, 500)
+        handleNodeClick(node)
       }
-    } else {
-      fgRef.current.zoomToFit(500, 50)
     }
   }, [graphData, location.state])
-
   const handleNodeClick = useCallback((node) => {
     if (!isInspectMode) {
       const lineage = getLineage(node.id, graphData.nodes, graphData.links)
@@ -238,6 +230,7 @@ export default function GraphPage() {
       }}
     >
       <ForceGraph2D
+        key={location.pathname + location.search}
         ref={fgRef}
         graphData={graphData}
         backgroundColor="#00000000" // transparent to see background image
@@ -258,10 +251,19 @@ export default function GraphPage() {
         linkDirectionalArrowLength={3}
         linkDirectionalArrowRelPos={1}
         onNodeClick={handleNodeClick}
-        onBackgroundClick={() => { }}
+        onNodeDrag={() => setIsFullView(false)}
+        onNodeDragEnd={() => setIsFullView(false)}
+        onBackgroundClick={deselectNode}
         onZoom={() => setIsFullView(false)}
         onDrag={() => setIsFullView(false)}
-        d3AlphaDecay={0.1} // Stop simulation quickly since we use fixed coords
+        onEngineStop={() => {
+          if (!hasInitiallyZoomed.current && !stickyNode) {
+            fgRef.current?.zoomToFit(500, 50)
+            hasInitiallyZoomed.current = true
+            setIsFullView(false)
+          }
+        }}
+        d3AlphaDecay={0.05} // Slightly slower decay for better interactivity
       />
 
       <div className="absolute top-4 left-4 flex flex-col gap-2 z-[9999] font-sans w-[200px]">
