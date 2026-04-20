@@ -22,46 +22,7 @@ export const NODE_STYLE_MAP = {
 }
 export const UI_SECTION_NEWLINE = '\x00'
 export const UI_NEWLINE = '\n'
-
-export const VISUALIZATION_OPTIONS = {
-  nodes: {
-    font: {
-      color: '#ffffff',
-      size: 16,
-      strokeWidth: 1,
-      strokeColor: 'rgba(0,0,0,0.6)',
-    },
-  },
-  layout: {
-    hierarchical: {
-      enabled: true,
-      direction: 'LR',
-      nodeSpacing: 150,
-      levelSeparation: 800,
-      sortMethod: 'directed',
-      blockShifting: true,
-      edgeMinimization: true,
-      parentCentralization: true,
-    },
-    improvedLayout: true,
-  },
-  edges: {
-    color: '#999',
-    smooth: {
-      enabled: true,
-      type: 'cubicBezier',
-      forceDirection: 'horizontal',
-      roundness: 0.5,
-    },
-  },
-  physics: {
-    enabled: false,
-  },
-  interaction: {
-    hover: true,
-    navigationButtons: false,
-    multiselect: true,
-    tooltipDelay: 100,
-    hideEdgesOnDrag: true,
-  },
+export const GRAPH_SETTINGS = {
+  levelSeparation: 3000,
+  nodeSpacing: 700,
 }

@@ -1,154 +1,149 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
-import { Network } from 'vis-network/standalone'
+import ForceGraph2D from 'react-force-graph-2d'
 import {
   UI_NEWLINE,
   UI_SECTION_NEWLINE,
-  VISUALIZATION_OPTIONS,
+  NODE_STYLE_MAP,
+  BRANCH_CONNECTION_COLOR,
+  DELETED_DATA_FILE_CONNECTION_COLOR,
+  FileType,
+  GRAPH_SETTINGS,
 } from '../graphConstants'
 import JSONbig from 'json-bigint'
 
-function applySelection(network, nodeId) {
-  const liveNodes = network.body.data.nodes
-  const liveEdges = network.body.data.edges
-
-  liveNodes.update(liveNodes.get().map(n => ({ ...n, hidden: false })))
-  liveEdges.update(liveEdges.get().map(e => ({ ...e, hidden: false })))
-
-  const relatedNodes = new Set([String(nodeId)])
-  const traverse = (id, direction) => {
-    network.getConnectedNodes(id, direction).forEach(connId => {
-      const s = String(connId)
-      if (!relatedNodes.has(s)) { relatedNodes.add(s); traverse(connId, direction) }
-    })
-  }
-  traverse(nodeId, 'to')
-  traverse(nodeId, 'from')
-
-  liveNodes.update(liveNodes.get().map(n => ({ ...n, hidden: !relatedNodes.has(String(n.id)) })))
-  liveEdges.update(liveEdges.get().map(e => ({
-    ...e,
-    hidden: !(relatedNodes.has(String(e.from)) && relatedNodes.has(String(e.to))),
-  })))
-
-  requestAnimationFrame(() => network.fit())
+const rgbToHex = (rgb) => {
+  const [r, g, b] = rgb
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
 
+// Helper to find related nodes (lineage)
+function getLineage(nodeId, nodes, links) {
+  const relatedNodes = new Set([String(nodeId)])
+  const queue = [String(nodeId)]
+
+  const adj = {}
+  links.forEach(l => {
+    const s = String(l.source.id || l.source)
+    const t = String(l.target.id || l.target)
+    if (!adj[s]) adj[s] = []
+    if (!adj[t]) adj[t] = []
+    adj[s].push(t)
+    adj[t].push(s)
+  })
+
+  while (queue.length > 0) {
+    const curr = queue.shift()
+    if (adj[curr]) {
+      adj[curr].forEach(neighbor => {
+        if (!relatedNodes.has(neighbor)) {
+          relatedNodes.add(neighbor)
+          queue.push(neighbor)
+        }
+      })
+    }
+  }
+  return relatedNodes
+}
+
+// Component removed sigma-style helpers
+
 export default function GraphPage() {
-  const { nodes, edges, metadata, errors } = useOutletContext()
+  const { nodes: rawNodes, edges: rawEdges, metadata, errors } = useOutletContext()
 
   const location = useLocation()
-  const networkContainerRef = useRef(null)
-  const networkRef = useRef(null)
-  const initialSelectRef = useRef(location.state?.selectNodeId || null)
-  const restoreSelectRef = useRef(
-    !location.state?.selectNodeId ? (history.state?.graphSelection || null) : null
-  )
+  const fgRef = useRef()
 
+  const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [isInspectMode, setIsInspectMode] = useState(true)
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNode] = useState(null)
 
-  const isInspectModeRef = useRef(isInspectMode)
-  useEffect(() => {
-    isInspectModeRef.current = isInspectMode
-  }, [isInspectMode])
+  // Process data for react-force-graph
+  const graphData = useMemo(() => {
+    if (!rawNodes) return { nodes: [], links: [] }
 
-  useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') setStickyNode(null) }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+    const nodeArray = typeof rawNodes.get === 'function' ? rawNodes.get() : rawNodes
+    const edgeArray = typeof rawEdges.get === 'function' ? rawEdges.get() : rawEdges
 
-  const resetView = useCallback(() => {
-    const network = networkRef.current
-    if (!network) return
-    const liveNodes = network.body.data.nodes
-    const liveEdges = network.body.data.edges
-    liveNodes.update(liveNodes.get().map(n => ({ ...n, hidden: false })))
-    liveEdges.update(liveEdges.get().map(e => ({ ...e, hidden: false })))
+    const processedNodes = nodeArray.map(n => {
+      const type = n.type || FileType.DATA
+      const style = NODE_STYLE_MAP[type] || NODE_STYLE_MAP[FileType.DATA]
+      return {
+        ...n,
+        color: rgbToHex(style.rgb),
+        level: style.level
+      }
+    })
+
+    const processedLinks = edgeArray.map(e => ({
+      source: e.from,
+      target: e.to,
+      color: e.color || '#999'
+    }))
+
+    // Apply hierarchical layout logic by setting fixed coordinates (fx, fy)
+    const { levelSeparation, nodeSpacing } = GRAPH_SETTINGS
+    const levelsMap = {}
+    processedNodes.forEach(n => {
+      const level = n.level || 0
+      if (!levelsMap[level]) levelsMap[level] = []
+      levelsMap[level].push(n)
+    })
+
+    Object.entries(levelsMap).forEach(([level, nodes]) => {
+      const x = parseInt(level) * levelSeparation
+      const totalHeight = (nodes.length - 1) * nodeSpacing
+      nodes.forEach((node, i) => {
+        node.fx = x
+        node.fy = (i * nodeSpacing) - (totalHeight / 2)
+      })
+    })
+
+    return { nodes: processedNodes, links: processedLinks }
+  }, [rawNodes, rawEdges])
+
+  const deselectNode = useCallback(() => {
+    setHighlightNodes(new Set())
     setStickyNode(null)
     setIsFullView(true)
     history.replaceState({ graphSelection: null }, '')
-    requestAnimationFrame(() => { network.redraw(); network.fit() })
   }, [])
 
-  useEffect(() => {
-    if (!history.state || !('graphSelection' in history.state)) {
-      history.replaceState({ graphSelection: null }, '')
-    }
-
-    const handlePopState = (e) => {
-      if (!e.state || !('graphSelection' in e.state)) return
-      const nodeId = e.state.graphSelection
-      const network = networkRef.current
-      if (!network) return
-      if (nodeId === null) {
-        resetView()
-        return
-      }
-      applySelection(network, nodeId)
-      const nodeData = network.body.data.nodes.get(nodeId)
-      if (nodeData) { setStickyNode(nodeData); setIsFullView(false) }
-    }
-
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [resetView])
+  const resetView = useCallback(() => {
+    deselectNode()
+    fgRef.current?.zoomToFit(500, 50)
+  }, [deselectNode])
 
   useEffect(() => {
-    if (Object.keys(errors).length > 0) {
-      const summary = Object.entries(errors)
-        .map(([file, err]) => `• ${file.split('/').pop()}: ${err}`)
-        .join('\n')
-      alert(`⚠️ IceGraph: ${Object.keys(errors).length} Errors Detected\n\n${summary}`)
-    }
-  }, [errors])
+    if (!fgRef.current || graphData.nodes.length === 0) return
 
-  useEffect(() => {
-    const network = new Network(
-      networkContainerRef.current,
-      { nodes, edges },
-      VISUALIZATION_OPTIONS
-    )
-    networkRef.current = network
-
-    network.once('afterDrawing', () => {
-      const fromFileTree = initialSelectRef.current
-      const fromHistory = restoreSelectRef.current
-      initialSelectRef.current = null
-      restoreSelectRef.current = null
-
-      const nodeId = fromFileTree || fromHistory
-      if (nodeId) {
-        applySelection(network, nodeId)
-        const nodeData = network.body.data.nodes.get(nodeId)
-        if (nodeData) { setStickyNode(nodeData); setIsFullView(false) }
-        if (fromFileTree) history.replaceState({ graphSelection: nodeId }, '')
-      } else {
-        network.fit()
-      }
-    })
-    network.on('zoom', () => setIsFullView(false))
-    network.on('dragEnd', () => setIsFullView(false))
-
-    network.on('click', (params) => {
-      if (params.nodes.length === 0) return
-
-      const selectedNodeId = params.nodes[0]
-      const nodeData = network.body.data.nodes.get(selectedNodeId)
-
-      if (!isInspectModeRef.current) {
-        applySelection(network, selectedNodeId)
+    const initialNodeId = location.state?.selectNodeId || history.state?.graphSelection
+    if (initialNodeId) {
+      const node = graphData.nodes.find(n => String(n.id) === String(initialNodeId))
+      if (node) {
+        setStickyNode(node)
+        const lineage = getLineage(node.id, graphData.nodes, graphData.links)
+        setHighlightNodes(lineage)
         setIsFullView(false)
+        fgRef.current.centerAt(node.fx, node.fy, 500)
+        fgRef.current.zoom(1.5, 500)
       }
+    } else {
+      fgRef.current.zoomToFit(500, 50)
+    }
+  }, [graphData, location.state])
 
-      history.pushState({ graphSelection: selectedNodeId }, '')
-      setStickyNode(nodeData)
-    })
-
-    return () => network.destroy()
-  }, [nodes, edges])
+  const handleNodeClick = useCallback((node) => {
+    if (!isInspectMode) {
+      const lineage = getLineage(node.id, graphData.nodes, graphData.links)
+      setHighlightNodes(lineage)
+      setIsFullView(false)
+      fgRef.current.centerAt(node.fx, node.fy, 500)
+    }
+    setStickyNode(node)
+    history.pushState({ graphSelection: node.id }, '')
+  }, [isInspectMode, graphData])
 
   const parseStickyDetails = (details) => {
     if (!details) return { title: '', rows: [] }
@@ -176,7 +171,31 @@ export default function GraphPage() {
         backgroundSize: '24px 24px',
       }}
     >
-      <div ref={networkContainerRef} className="absolute inset-0" />
+      <ForceGraph2D
+        ref={fgRef}
+        graphData={graphData}
+        backgroundColor="#00000000" // transparent to see background image
+        nodeLabel="label"
+        nodeRelSize={70}
+        linkWidth={1}
+        nodeColor={n => {
+          if (highlightNodes.size > 0 && !highlightNodes.has(String(n.id))) return '#333'
+          return n.color
+        }}
+        linkColor={l => {
+          const s = String(l.source.id || l.source)
+          const t = String(l.target.id || l.target)
+          if (highlightNodes.size > 0 && !(highlightNodes.has(s) && highlightNodes.has(t))) return '#222'
+          return l.color
+        }}
+        linkDirectionalArrowLength={3}
+        linkDirectionalArrowRelPos={1}
+        onNodeClick={handleNodeClick}
+        onBackgroundClick={() => { }}
+        onZoom={() => setIsFullView(false)}
+        onDrag={() => setIsFullView(false)}
+        d3AlphaDecay={0.1} // Stop simulation quickly since we use fixed coords
+      />
 
       <div className="absolute top-4 left-4 flex flex-col gap-2 z-[9999] font-sans w-[200px]">
         <button
@@ -208,7 +227,7 @@ export default function GraphPage() {
 
         <button
           className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]"
-          onClick={() => networkRef.current?.fit()}
+          onClick={() => fgRef.current?.zoomToFit(500, 50)}
         >
           Center Graph
         </button>
