@@ -45,7 +45,7 @@ export default function GraphPage() {
     !location.state?.selectNodeId ? (history.state?.graphSelection || null) : null
   )
 
-  const [isInspectMode, setIsInspectMode] = useState(false)
+  const [isInspectMode, setIsInspectMode] = useState(true)
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNode] = useState(null)
 

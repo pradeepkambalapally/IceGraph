@@ -112,8 +112,8 @@ export default function TableLayout() {
         setJobId(null)
 
         clearPolling()
-      } else if (res.status === 400) {
-        setError(result.error || 'Job failed')
+      } else if (res.status !== 202) {
+        setError(res.error || 'Job failed')
         setLoading(false)
         setJobId(null)
 
