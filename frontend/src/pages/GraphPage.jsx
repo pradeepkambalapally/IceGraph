@@ -169,11 +169,9 @@ export default function GraphPage() {
 
       const node = graphData.nodes.find(n => String(n.id) === String(nodeId))
       if (node) {
-        if (!isInspectModeRef.current) {
-          const lineage = getLineage(node.id, graphData.links)
-          setHighlightNodes(lineage)
-          fgRef.current?.centerAt(node.fx ?? node.x, node.fy ?? node.y, 500)
-        }
+        const lineage = getLineage(node.id, graphData.links)
+        setHighlightNodes(lineage)
+        fgRef.current?.centerAt(node.fx ?? node.x, node.fy ?? node.y, 500)
         setStickyNode(node)
         setIsFullView(false)
       }
@@ -296,6 +294,7 @@ export default function GraphPage() {
       }}
     >
       <ForceGraph2D
+        key={location.state?.selectNodeId}
         ref={fgRef}
         graphData={graphData}
         backgroundColor="#00000000"
