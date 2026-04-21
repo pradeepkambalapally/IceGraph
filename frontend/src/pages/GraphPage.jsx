@@ -290,8 +290,16 @@ export default function GraphPage() {
 
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
+
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 7.00
+    ctx.lineJoin = 'round'
+    ctx.strokeText(label, node.x, node.y)
+
     ctx.fillStyle = '#ffffff'
     ctx.fillText(label, node.x, node.y)
+
+    ctx.lineWidth = 1
   }, [])
 
   const paintPointerArea = useCallback((node, color, ctx) => {
