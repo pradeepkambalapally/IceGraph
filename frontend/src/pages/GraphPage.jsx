@@ -7,6 +7,7 @@ import {
   NODE_STYLE_MAP,
   FileType,
   GRAPH_SETTINGS,
+  DELETED_DATA_FILE_CONNECTION_COLOR
 } from '../graphConstants'
 import JSONbig from 'json-bigint'
 
@@ -21,6 +22,7 @@ const LINK_FONT_SIZE = 60
 const LINK_FONT = `500 ${LINK_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
 const NODE_PADDING = 40
 const LINK_CURVATURE = 0.1
+const DELETED_CONNECTION_LABLE = "deleted"
 
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
@@ -107,7 +109,9 @@ export default function GraphPage() {
       source: e.from,
       target: e.to,
       color: e.color || '#999',
-      label: e.branch_names || '',
+      label: e.color === DELETED_DATA_FILE_CONNECTION_COLOR
+        ? DELETED_CONNECTION_LABLE
+        : (e.branch_names || ''),
     }))
 
     const { levelSeparation, nodeSpacing } = GRAPH_SETTINGS
@@ -299,12 +303,14 @@ export default function GraphPage() {
 
   const linkCurvatures = useMemo(() => {
     const map = new Map()
-    graphData.links.forEach(l => { map.set(l, l.label ? LINK_CURVATURE : 0) })
+    graphData.links.forEach(l => { map.set(l, !l.label || l.label === DELETED_CONNECTION_LABLE ? 0 : LINK_CURVATURE) })
     return map
   }, [graphData.links])
 
   const paintLink = useCallback((link, ctx) => {
     if (!link.label) return
+
+    const position = link.label === DELETED_CONNECTION_LABLE ? 0.5 : 0.25
 
     const start = link.source
     const end = link.target
@@ -315,14 +321,14 @@ export default function GraphPage() {
     if (sx == null || ex == null) return
 
     const curvature = linkCurvatures.get(link) || 0
-    let qX = sx + (ex - sx) * 0.25
-    let qY = sy + (ey - sy) * 0.25
+    let qX = sx + (ex - sx) * position
+    let qY = sy + (ey - sy) * position
     if (curvature !== 0) {
       const dx = ex - sx
       const dy = ey - sy
       const len = Math.sqrt(dx * dx + dy * dy) || 1
-      qX += (dy / len) * curvature * len * 0.25
-      qY += (-dx / len) * curvature * len * 0.25
+      qX += (dy / len) * curvature * len * position
+      qY += (-dx / len) * curvature * len * position
     }
     ctx.shadowBlur = 0
     ctx.font = LINK_FONT
