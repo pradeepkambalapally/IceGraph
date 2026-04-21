@@ -132,7 +132,7 @@ export default function TimelinePage() {
   }, [])
 
   const { events, snapshotMap } = useMemo(() => {
-    const allNodes = nodes.get()
+    const allNodes = nodes || []
 
     const metaNodes = allNodes
       .filter(n => n.type === FileType.METADATA || n.type === FileType.MAIN_METADATA)

@@ -290,8 +290,8 @@ export default function FileTreePage() {
   }, [snapshotDropdownOpen])
 
   const { snapshots, adjacency, nodeById, snapshotById } = useMemo(() => {
-    const allNodes = nodes.get()
-    const allEdges = edges.get()
+    const allNodes = nodes || []
+    const allEdges = edges || []
 
     const byId = {}
     for (const n of allNodes) byId[n.id] = n

@@ -1,7 +1,7 @@
 import JSONbig from 'json-bigint'
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
-import { DataSet } from 'vis-network/standalone'
+
 import MetadataStructured from '../components/MetadataStructured'
 import { useTableSpecs } from '../context/TableSpecsContext'
 import {
@@ -16,6 +16,10 @@ export default function TableLayout() {
   const navigate = useNavigate()
   const { detailsOpen, setDetailsOpen, selectionDetail, setSelectionDetail, setRawData } = useTableSpecs()
   const detailPanelRef = useRef(null)
+
+  useEffect(() => {
+    sessionStorage.removeItem('last_graph_selection');
+  }, []);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -55,21 +59,23 @@ export default function TableLayout() {
   }, [selectionDetail])
 
   const buildGraphData = (data) => {
-    const styledNodes = new DataSet(
-      data.nodes.map((node) => {
-        const style = NODE_STYLE_MAP[node.type] || { rgb: [100, 100, 100], level: 0 }
-        const [r, g, b] = style.rgb
-        return { ...node, shape: 'box', color: `rgba(${r},${g},${b},${node.color_shift || 1})`, level: style.level }
-      })
-    )
-    const styledEdges = new DataSet(
-      data.edges.map((edge) => {
-        const newEdge = { ...edge }
-        if (edge.is_deleted) { newEdge.color = DELETED_DATA_FILE_CONNECTION_COLOR; newEdge.title = 'deleted' }
-        else if (edge.branch_names) { newEdge.dashes = [15, 20, 5, 20]; newEdge.color = BRANCH_CONNECTION_COLOR; newEdge.title = edge.branch_names }
-        return newEdge
-      })
-    )
+    const styledNodes = data.nodes.map((node) => {
+      const style = NODE_STYLE_MAP[node.type] || { rgb: [100, 100, 100], level: 0 }
+      const [r, g, b] = style.rgb
+      return { ...node, shape: 'box', color: `rgba(${r},${g},${b},${node.color_shift || 1})`, level: style.level }
+    })
+    const styledEdges = data.edges.map((edge) => {
+      const newEdge = { ...edge }
+      if (edge.is_deleted) {
+        newEdge.color = DELETED_DATA_FILE_CONNECTION_COLOR
+        newEdge.title = 'deleted'
+      } else if (edge.branch_names) {
+        newEdge.dashes = [15, 20, 5, 20]
+        newEdge.color = BRANCH_CONNECTION_COLOR
+        newEdge.title = edge.branch_names
+      }
+      return newEdge
+    })
     return { nodes: styledNodes, edges: styledEdges, metadata: data.metadata, errors: data.errors || {} }
   }
 
@@ -106,6 +112,7 @@ export default function TableLayout() {
         const text = await res.text()
         setRawData(text)
         const data = JSONbig({ storeAsString: true }).parse(text)
+        console.log(data)
 
         setGraphData(buildGraphData(data))
         setLoading(false)

@@ -4,7 +4,13 @@ import threading
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.sql.types import (
+    StructType,
+    StructField,
+    StringType,
+    LongType,
+    TimestampType,
+)
 from pyspark.sql import functions as F
 from typing import Optional, Dict, Any
 from spark_connect import open_spark_connect_session
@@ -438,6 +444,22 @@ class IcebergInventoryBuilder:
         self._process_avro_entries(avro_entries, deduped_manifest_rows)
 
     def _union_snapshot_manifests_df(self):
+        if not self._snapshot_rows:
+            return None
+
+        snapshot_schema = StructType(
+            [
+                StructField("lookup_snap_id", LongType(), False),
+                StructField("snapshot_timestamp", TimestampType(), True),
+            ]
+        )
+        snapshot_to_timestamp = [
+            (s.snapshot_id, s.committed_at) for s in self._snapshot_rows
+        ]
+        snapshot_to_timestamp_df = self._spark.createDataFrame(
+            snapshot_to_timestamp, snapshot_schema
+        )
+
         result = None
         for snapshot in self._snapshot_rows:
             snap_id = snapshot.snapshot_id
@@ -459,7 +481,19 @@ class IcebergInventoryBuilder:
                 else result.unionByName(df, allowMissingColumns=True)
             )
 
-        return result
+        if result is None:
+            return None
+
+        return result.join(
+            snapshot_to_timestamp_df,
+            F.col("added_snapshot_id") == F.col("lookup_snap_id"),
+            "left",
+        ).select(
+            F.col("path"),
+            F.col("added_snapshot_id"),
+            F.col("snapshot_timestamp").alias("added_snapshot_timestamp"),
+            F.col("_snap_id"),
+        )
 
     def _fill_snapshot_child_files(self, manifest_rows):
         snap_id_to_paths = defaultdict(list)
@@ -540,6 +574,7 @@ class IcebergInventoryBuilder:
                 "type": FileType.MANIFEST.value,
                 "file_path": m_path,
                 "added_snapshot_id": m_row.added_snapshot_id,
+                "added_snapshot_timestamp": m_row.added_snapshot_timestamp,
                 "partitions": UI_NEWLINE.join(all_partitions),
                 "total_rows_in_downstreem_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],

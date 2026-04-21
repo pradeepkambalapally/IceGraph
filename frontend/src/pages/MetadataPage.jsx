@@ -65,7 +65,7 @@ export default function MetadataPage() {
   if (!metadata) return null
 
   const mainMetadataPath = (() => {
-    const node = nodes.get().find(n => n.type === FileType.MAIN_METADATA)
+    const node = (nodes || []).find(n => n.type === FileType.MAIN_METADATA)
     if (!node?.details) return null
     const sections = node.details.split(UI_SECTION_NEWLINE)
     for (let i = 1; i < sections.length; i++) {

@@ -76,7 +76,7 @@ export default function NavBar() {
 
   return (
     <>
-      <nav ref={navRef} className="bg-[#1a202c] text-white shadow-lg shrink-0 sticky top-0 z-50">
+      <nav ref={navRef} className="h-16 bg-[#1a202c] text-white shadow-lg shrink-0 sticky top-0 z-50">
 
         <div className="px-4 sm:px-6 py-3 flex items-center gap-4">
 
