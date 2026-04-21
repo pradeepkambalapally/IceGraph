@@ -15,11 +15,9 @@ const rgbToHex = (rgb) => {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
 
-// SNAPSHOT TRAVERSAL: Builds static connection maps before traversing to ensure 100% accuracy
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
 
-  // 1. Take a static snapshot of all connections immediately
   const toLinks = {}
   const fromLinks = {}
 
@@ -34,7 +32,6 @@ function getLineage(nodeId, links) {
     fromLinks[t].push(s)
   })
 
-  // 2. Traverse against the static snapshot, not the dynamic links array
   const traverse = (currentId, direction) => {
     const neighbors = direction === 'to' ? (toLinks[currentId] || []) : (fromLinks[currentId] || [])
     neighbors.forEach(neighborId => {
@@ -57,6 +54,7 @@ export default function GraphPage() {
   const location = useLocation()
   const fgRef = useRef()
   const hasInitialized = useRef(false)
+  const isResettingRef = useRef(false)
 
   const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [isInspectMode, setIsInspectMode] = useState(true)
@@ -83,7 +81,6 @@ export default function GraphPage() {
     }
   }, [errors])
 
-  // Process data for react-force-graph
   const graphData = useMemo(() => {
     if (!rawNodes) return { nodes: [], links: [] }
 
@@ -103,7 +100,8 @@ export default function GraphPage() {
     const processedLinks = edgeArray.map(e => ({
       source: e.from,
       target: e.to,
-      color: e.color || '#999'
+      color: e.color || '#999',
+      label: e.branch_names || '',
     }))
 
     const { levelSeparation, nodeSpacing } = GRAPH_SETTINGS
@@ -120,7 +118,6 @@ export default function GraphPage() {
       nodes.forEach((node, i) => {
         const fx = x
         const fy = (i * nodeSpacing) - (totalHeight / 2)
-        // Store original positions for snap-back capabilities
         node.fx = node.originalFx = fx
         node.fy = node.originalFy = fy
       })
@@ -138,7 +135,6 @@ export default function GraphPage() {
   const resetView = useCallback(() => {
     deselectNode()
 
-    // Snap all dragged/moved nodes back to their original calculated places
     graphData.nodes.forEach(node => {
       node.fx = node.originalFx
       node.fy = node.originalFy
@@ -148,10 +144,12 @@ export default function GraphPage() {
       node.vy = 0
     })
 
+    isResettingRef.current = true
     setIsFullView(true)
     sessionStorage.removeItem('last_graph_selection')
     fgRef.current?.d3ReheatSimulation()
     fgRef.current?.zoomToFit(500, 50)
+    setTimeout(() => { isResettingRef.current = false }, 700)
   }, [deselectNode, graphData])
 
   useEffect(() => {
@@ -182,7 +180,6 @@ export default function GraphPage() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [graphData, resetView])
 
-  // Initial Load focusing
   useEffect(() => {
     if (!fgRef.current || graphData.nodes.length === 0 || hasInitialized.current) return
     hasInitialized.current = true
@@ -211,17 +208,36 @@ export default function GraphPage() {
         }, 100)
       }
     } else {
-      // Explicitly trigger the reset logic to ensure perfect alignment at the start
       setTimeout(() => resetView(), 100)
     }
   }, [graphData, location.state, resetView])
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!fgRef.current || graphData.nodes.length === 0) return
+      if (document.hidden) {
+        graphData.nodes.forEach(node => {
+          node._savedFx = node.fx
+          node._savedFy = node.fy
+          node.fx = node.x
+          node.fy = node.y
+        })
+      } else {
+        graphData.nodes.forEach(node => {
+          node.fx = node._savedFx !== undefined ? node._savedFx : node.fx
+          node.fy = node._savedFy !== undefined ? node._savedFy : node.fy
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [graphData])
 
   const handleNodeClick = useCallback((node) => {
     if (!isInspectMode) {
+      sessionStorage.setItem('last_graph_selection', node.id);
       const lineage = getLineage(node.id, graphData.links)
       setHighlightNodes(lineage)
       setIsFullView(false)
-      sessionStorage.setItem('last_graph_selection', node.id);
       fgRef.current.centerAt(node.fx ?? node.x, node.fy ?? node.y, 500)
     }
     setStickyNode(node)
@@ -233,6 +249,10 @@ export default function GraphPage() {
     const fontSize = 80
 
     ctx.font = `500 ${fontSize}px "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"`
+    ctx.shadowColor = "#000000";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     const textMetrics = ctx.measureText(label)
     const padding = 40
@@ -272,6 +292,41 @@ export default function GraphPage() {
     ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h)
   }, [])
 
+  const linkCurvatures = useMemo(() => {
+    const map = new Map()
+    graphData.links.forEach(l => { map.set(l, l.label ? 0.3 : 0) })
+    return map
+  }, [graphData.links])
+  const LINK_FONT_SIZE = 60
+  const paintLink = useCallback((link, ctx) => {
+    if (!link.label) return
+    const start = link.source
+    const end = link.target
+    if (!start || !end || typeof start !== 'object' || typeof end !== 'object') return
+
+    const curvature = linkCurvatures.get(link) || 0
+    let midX = (start.x + end.x) / 2
+    let midY = (start.y + end.y) / 2
+    if (curvature !== 0) {
+      const dx = end.x - start.x
+      const dy = end.y - start.y
+      const len = Math.sqrt(dx * dx + dy * dy) || 1
+      midX += (dy / len) * curvature * len * 0.5
+      midY += (-dx / len) * curvature * len * 0.5
+    }
+
+    ctx.font = `500 ${LINK_FONT_SIZE}px "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.shadowColor = "#ffffffff";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    ctx.fillStyle = '#e3f8f5ff'
+    ctx.fillText(link.label, midX, midY)
+  }, [linkCurvatures])
+
   const parseStickyDetails = (details) => {
     if (!details) return { title: '', rows: [] }
     const splitToken = UI_SECTION_NEWLINE === '\n' ? /\\n|\n/ : UI_SECTION_NEWLINE
@@ -300,7 +355,6 @@ export default function GraphPage() {
       }}
     >
       <ForceGraph2D
-        key={location.state?.selectNodeId}
         ref={fgRef}
         graphData={graphData}
         backgroundColor="#00000000"
@@ -318,15 +372,21 @@ export default function GraphPage() {
 
         linkWidth={1}
         linkColor={l => l.color}
+        linkCurvature={l => linkCurvatures.get(l) || 0}
         linkDirectionalArrowLength={3}
         linkDirectionalArrowRelPos={1}
+        linkCanvasObjectMode={() => 'after'}
+        linkCanvasObject={paintLink}
 
         onNodeClick={handleNodeClick}
         onBackgroundClick={() => { }}
         onNodeDrag={() => setIsFullView(false)}
         onNodeDragEnd={() => setIsFullView(false)}
-        onZoom={() => setIsFullView(false)}
-        d3AlphaDecay={0.05}
+        onZoom={() => { if (!isResettingRef.current) setIsFullView(false) }}
+        d3AlphaDecay={0.5}
+        d3VelocityDecay={0.5}
+        warmupTicks={100}
+        cooldownTicks={0}
       />
 
       <div className="absolute top-4 left-4 flex flex-col gap-2 z-[9999] font-sans w-[200px]">
