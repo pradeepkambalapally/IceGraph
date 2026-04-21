@@ -61,6 +61,11 @@ export default function GraphPage() {
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNode] = useState(null)
 
+  const [dimensions, setDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight - 70
+  });
+
   const isInspectModeRef = useRef(isInspectMode)
   const highlightNodesRef = useRef(highlightNodes)
 
@@ -71,6 +76,19 @@ export default function GraphPage() {
     const handleKey = (e) => { if (e.key === 'Escape') setStickyNode(null) }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
+
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight - 70
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [])
 
   useEffect(() => {
@@ -379,6 +397,8 @@ export default function GraphPage() {
     >
       <ForceGraph2D
         ref={fgRef}
+        width={dimensions.width}
+        height={dimensions.height}
         graphData={graphData}
         backgroundColor="#00000000"
         nodeLabel={() => ""}
