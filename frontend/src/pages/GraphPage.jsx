@@ -15,6 +15,12 @@ const rgbToHex = (rgb) => {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase()
 }
 
+const NODE_FONT_SIZE = 80
+const NODE_FONT = `500 ${NODE_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
+const LINK_FONT_SIZE = 60
+const LINK_FONT = `500 ${LINK_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
+const NODE_PADDING = 40
+
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
 
@@ -24,10 +30,8 @@ function getLineage(nodeId, links) {
   links.forEach(l => {
     const s = String(l.source.id ?? l.source)
     const t = String(l.target.id ?? l.target)
-
     if (!toLinks[s]) toLinks[s] = []
     if (!fromLinks[t]) fromLinks[t] = []
-
     toLinks[s].push(t)
     fromLinks[t].push(s)
   })
@@ -62,9 +66,10 @@ export default function GraphPage() {
   const [stickyNode, setStickyNode] = useState(null)
 
   const isInspectModeRef = useRef(isInspectMode)
-  useEffect(() => {
-    isInspectModeRef.current = isInspectMode
-  }, [isInspectMode])
+  const highlightNodesRef = useRef(highlightNodes)
+
+  useEffect(() => { isInspectModeRef.current = isInspectMode }, [isInspectMode])
+  useEffect(() => { highlightNodesRef.current = highlightNodes }, [highlightNodes])
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') setStickyNode(null) }
@@ -93,7 +98,7 @@ export default function GraphPage() {
       return {
         ...n,
         color: rgbToHex(style.rgb),
-        level: style.level
+        level: style.level,
       }
     })
 
@@ -116,15 +121,19 @@ export default function GraphPage() {
       const x = parseInt(level) * levelSeparation
       const totalHeight = (nodes.length - 1) * nodeSpacing
       nodes.forEach((node, i) => {
-        const fx = x
-        const fy = (i * nodeSpacing) - (totalHeight / 2)
-        node.fx = node.originalFx = fx
-        node.fy = node.originalFy = fy
+        node.fx = node.originalFx = x
+        node.fy = node.originalFy = (i * nodeSpacing) - (totalHeight / 2)
       })
     })
 
     return { nodes: processedNodes, links: processedLinks }
   }, [rawNodes, rawEdges])
+
+  const resetZoom = useCallback(() => {
+    isResettingRef.current = true
+    fgRef.current?.zoomToFit(500, 50)
+    setTimeout(() => { isResettingRef.current = false }, 700)
+  }, [])
 
   const deselectNode = useCallback(() => {
     setHighlightNodes(new Set())
@@ -147,10 +156,8 @@ export default function GraphPage() {
     isResettingRef.current = true
     setIsFullView(true)
     sessionStorage.removeItem('last_graph_selection')
-    fgRef.current?.d3ReheatSimulation()
-    fgRef.current?.zoomToFit(500, 50)
-    setTimeout(() => { isResettingRef.current = false }, 700)
-  }, [deselectNode, graphData])
+    resetZoom()
+  }, [deselectNode, graphData, resetZoom])
 
   useEffect(() => {
     if (!history.state || !('graphSelection' in history.state)) {
@@ -185,11 +192,10 @@ export default function GraphPage() {
     hasInitialized.current = true
     fgRef.current.d3ReheatSimulation()
 
-    const historyId = history.state?.graphSelection;
-    const locationId = location.state?.selectNodeId;
-    const sessionId = sessionStorage.getItem('last_graph_selection');
-
-    const targetNodeId = historyId || locationId || sessionId;
+    const historyId = history.state?.graphSelection
+    const locationId = location.state?.selectNodeId
+    const sessionId = sessionStorage.getItem('last_graph_selection')
+    const targetNodeId = historyId || locationId || sessionId
 
     if (targetNodeId) {
       const node = graphData.nodes.find(n => String(n.id) === String(targetNodeId))
@@ -211,6 +217,7 @@ export default function GraphPage() {
       setTimeout(() => resetView(), 100)
     }
   }, [graphData, location.state, resetView])
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!fgRef.current || graphData.nodes.length === 0) return
@@ -233,8 +240,8 @@ export default function GraphPage() {
   }, [graphData])
 
   const handleNodeClick = useCallback((node) => {
-    if (!isInspectMode) {
-      sessionStorage.setItem('last_graph_selection', node.id);
+    if (!isInspectModeRef.current) {
+      sessionStorage.setItem('last_graph_selection', node.id)
       const lineage = getLineage(node.id, graphData.links)
       setHighlightNodes(lineage)
       setIsFullView(false)
@@ -242,25 +249,25 @@ export default function GraphPage() {
     }
     setStickyNode(node)
     history.pushState({ graphSelection: node.id }, '')
-  }, [isInspectMode, graphData])
+  }, [graphData])
 
   const paintNode = useCallback((node, ctx) => {
     const label = node.label || String(node.id)
-    const fontSize = 80
 
-    ctx.font = `500 ${fontSize}px "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"`
-    ctx.shadowColor = "#000000";
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+    ctx.font = NODE_FONT
+    if (!node.__pillW) {
+      const w = ctx.measureText(label).width + NODE_PADDING * 2
+      const h = NODE_FONT_SIZE + NODE_PADDING
+      node.__pillW = w
+      node.__pillH = h
+    }
 
-    const textMetrics = ctx.measureText(label)
-    const padding = 40
-    const w = textMetrics.width + padding * 2
-    const h = fontSize + padding
-
+    const w = node.__pillW
+    const h = node.__pillH
     const x = Math.round(node.x - w / 2)
     const y = Math.round(node.y - h / 2)
+
+    ctx.shadowBlur = 0
 
     ctx.beginPath()
     if (ctx.roundRect) {
@@ -280,9 +287,6 @@ export default function GraphPage() {
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#ffffff'
     ctx.fillText(label, node.x, node.y)
-
-    node.__pillW = w
-    node.__pillH = h
   }, [])
 
   const paintPointerArea = useCallback((node, color, ctx) => {
@@ -297,35 +301,49 @@ export default function GraphPage() {
     graphData.links.forEach(l => { map.set(l, l.label ? 0.3 : 0) })
     return map
   }, [graphData.links])
-  const LINK_FONT_SIZE = 60
+
   const paintLink = useCallback((link, ctx) => {
     if (!link.label) return
+
     const start = link.source
     const end = link.target
-    if (!start || !end || typeof start !== 'object' || typeof end !== 'object') return
+    const sx = typeof start === 'object' ? start.x : null
+    const sy = typeof start === 'object' ? start.y : null
+    const ex = typeof end === 'object' ? end.x : null
+    const ey = typeof end === 'object' ? end.y : null
+    if (sx == null || ex == null) return
 
     const curvature = linkCurvatures.get(link) || 0
-    let midX = (start.x + end.x) / 2
-    let midY = (start.y + end.y) / 2
+    let midX = (sx + ex) / 2
+    let midY = (sy + ey) / 2
     if (curvature !== 0) {
-      const dx = end.x - start.x
-      const dy = end.y - start.y
+      const dx = ex - sx
+      const dy = ey - sy
       const len = Math.sqrt(dx * dx + dy * dy) || 1
       midX += (dy / len) * curvature * len * 0.5
       midY += (-dx / len) * curvature * len * 0.5
     }
 
-    ctx.font = `500 ${LINK_FONT_SIZE}px "Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"`
+    ctx.shadowBlur = 0
+    ctx.font = LINK_FONT
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.shadowColor = "#ffffffff";
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
     ctx.fillStyle = '#e3f8f5ff'
     ctx.fillText(link.label, midX, midY)
   }, [linkCurvatures])
+
+  const nodeVisibility = useCallback((n) => {
+    const hl = highlightNodesRef.current
+    return hl.size === 0 || hl.has(String(n.id))
+  }, [])
+
+  const linkVisibility = useCallback((l) => {
+    const hl = highlightNodesRef.current
+    if (hl.size === 0) return true
+    const s = String(l.source.id || l.source)
+    const t = String(l.target.id || l.target)
+    return hl.has(s) && hl.has(t)
+  }, [])
 
   const parseStickyDetails = (details) => {
     if (!details) return { title: '', rows: [] }
@@ -362,13 +380,8 @@ export default function GraphPage() {
         nodeCanvasObject={paintNode}
         nodePointerAreaPaint={paintPointerArea}
 
-        nodeVisibility={n => highlightNodes.size === 0 || highlightNodes.has(String(n.id))}
-        linkVisibility={l => {
-          if (highlightNodes.size === 0) return true
-          const s = String(l.source.id || l.source)
-          const t = String(l.target.id || l.target)
-          return highlightNodes.has(s) && highlightNodes.has(t)
-        }}
+        nodeVisibility={nodeVisibility}
+        linkVisibility={linkVisibility}
 
         linkWidth={1}
         linkColor={l => l.color}
@@ -379,14 +392,13 @@ export default function GraphPage() {
         linkCanvasObject={paintLink}
 
         onNodeClick={handleNodeClick}
-        onBackgroundClick={() => { }}
         onNodeDrag={() => setIsFullView(false)}
         onNodeDragEnd={() => setIsFullView(false)}
         onZoom={() => { if (!isResettingRef.current) setIsFullView(false) }}
-        d3AlphaDecay={0.5}
-        d3VelocityDecay={0.5}
-        warmupTicks={100}
+
+        warmupTicks={1}
         cooldownTicks={0}
+        d3AlphaDecay={1}
       />
 
       <div className="absolute top-4 left-4 flex flex-col gap-2 z-[9999] font-sans w-[200px]">
@@ -419,7 +431,7 @@ export default function GraphPage() {
 
         <button
           className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]"
-          onClick={() => fgRef.current?.zoomToFit(500, 50)}
+          onClick={() => resetZoom()}
         >
           Center Graph
         </button>
