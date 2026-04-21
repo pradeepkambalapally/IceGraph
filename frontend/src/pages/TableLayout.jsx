@@ -18,6 +18,10 @@ export default function TableLayout() {
   const detailPanelRef = useRef(null)
 
   useEffect(() => {
+    sessionStorage.removeItem('last_graph_selection');
+  }, []);
+
+  useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'Escape') { setDetailsOpen(false); setSelectionDetail(null) }
     }
