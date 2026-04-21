@@ -426,7 +426,7 @@ export default function GraphPage() {
         d3AlphaDecay={1}
       />
 
-      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[9999] font-sans w-[200px]">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-[200px]">
         <button
           className={`w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
             ${isFullView

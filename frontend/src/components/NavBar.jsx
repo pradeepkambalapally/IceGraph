@@ -158,7 +158,7 @@ export default function NavBar() {
         </div>
 
         {isTablePage && menuOpen && (
-          <div className="md:hidden border-t border-[#2d3748] px-4 py-3 flex flex-col gap-1">
+          <div className="md:hidden border-t border-[#2d3748] px-4 py-3 flex flex-col gap-1 bg-[#1a202c] absolute top-16 left-0 w-full z-[60] shadow-xl">
             {tableName && (
               <button
                 className="text-sm font-mono px-3 py-2 rounded-md border border-slate-600 text-slate-300 hover:border-slate-400 hover:text-white bg-transparent transition text-left"
