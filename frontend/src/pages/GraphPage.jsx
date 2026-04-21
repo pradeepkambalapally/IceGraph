@@ -4,17 +4,10 @@ import ForceGraph2D from 'react-force-graph-2d'
 import {
   UI_NEWLINE,
   UI_SECTION_NEWLINE,
-  NODE_STYLE_MAP,
-  FileType,
   GRAPH_SETTINGS,
   DELETED_DATA_FILE_CONNECTION_COLOR
 } from '../graphConstants'
 import JSONbig from 'json-bigint'
-
-const rgbToHex = (rgb) => {
-  const [r, g, b] = rgb
-  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase()
-}
 
 const NODE_FONT_SIZE = 80
 const NODE_FONT = `500 ${NODE_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
@@ -96,12 +89,10 @@ export default function GraphPage() {
     const edgeArray = rawEdges || []
 
     const processedNodes = nodeArray.map(n => {
-      const type = n.type || FileType.DATA
-      const style = NODE_STYLE_MAP[type] || NODE_STYLE_MAP[FileType.DATA]
       return {
         ...n,
-        color: rgbToHex(style.rgb),
-        level: style.level,
+        color: n.color,
+        level: n.level,
       }
     })
 
