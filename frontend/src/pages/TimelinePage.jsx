@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileType, UI_NEWLINE, UI_SECTION_NEWLINE } from '../graphConstants'
+import JSONbig from 'json-bigint'
 
 const COLOR_A = '#1964B9'
 const COLOR_B = '#6437D2'
@@ -98,6 +99,88 @@ function labelFor(type) {
 }
 
 function DiffRow({ label, before, after }) {
+  const tryParse = (val) => {
+    if (!val) return null
+    try {
+      const p = JSONbig({ storeAsString: true }).parse(val)
+      return (typeof p === 'object' && p !== null) ? p : null
+    } catch { return null }
+  }
+
+  const beforeObj = tryParse(before)
+  const afterObj = tryParse(after)
+
+  if (beforeObj && afterObj) {
+    const allKeys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])).sort()
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">
+          {label.replace(/_/g, ' ')}
+        </span>
+        <div className="bg-[#13171f] border border-[#2d3748] rounded-lg py-3 font-mono text-[0.7rem] overflow-x-auto shadow-2xl flex flex-col">
+          <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
+          <div className="flex flex-col">
+            {allKeys.map(key => {
+              const bVal = beforeObj[key]
+              const aVal = afterObj[key]
+              const bStr = JSON.stringify(bVal)
+              const aStr = JSON.stringify(aVal)
+
+              if (bVal !== undefined && aVal === undefined) {
+                return (
+                  <div key={key} className="bg-red-500/8 text-red-400 px-8 py-0.5 flex gap-2">
+                    <span className="w-3 shrink-0 opacity-50 text-center">-</span>
+                    <span className="break-all">"{key}": {bStr}</span>
+                  </div>
+                )
+              }
+              if (bVal === undefined && aVal !== undefined) {
+                return (
+                  <div key={key} className="bg-green-500/8 text-green-400 px-8 py-0.5 flex gap-2">
+                    <span className="w-3 shrink-0 opacity-50 text-center">+</span>
+                    <span className="break-all">"{key}": {aStr}</span>
+                  </div>
+                )
+              }
+              if (bStr !== aStr) {
+                return (
+                  <div key={key}>
+                    <div className="bg-red-500/8 text-red-400 px-8 py-0.5 flex gap-2">
+                      <span className="w-3 shrink-0 opacity-40 text-center">-</span>
+                      <span className="break-all">"{key}": {bStr}</span>
+                    </div>
+                    <div className="bg-green-500/8 text-green-400 px-8 py-0.5 flex gap-2">
+                      <span className="w-3 shrink-0 opacity-50 text-center">+</span>
+                      <span className="break-all">"{key}": {aStr}</span>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div key={key} className="px-8 py-0.5 text-slate-300 flex gap-2">
+                  <span className="w-3 shrink-0 opacity-20 text-center"> </span>
+                  <span className="break-all">"{key}": {bStr}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="px-4 py-0.5 text-slate-500 opacity-40">{"}"}</div>
+        </div>
+      </div>
+    )
+  }
+
+  const tryFormat = (val) => {
+    if (!val) return val
+    try {
+      const parsed = JSONbig({ storeAsString: true }).parse(val)
+      if (typeof parsed === 'object' && parsed !== null) {
+        return JSON.stringify(parsed, null, 2)
+      }
+    } catch { }
+    return val
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">
@@ -107,13 +190,13 @@ function DiffRow({ label, before, after }) {
         <div>
           <div className="text-[0.55rem] text-red-400 font-bold uppercase mb-0.5">Before</div>
           <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {before ?? '—'}
+            {tryFormat(before) ?? '—'}
           </pre>
         </div>
         <div>
           <div className="text-[0.55rem] text-green-400 font-bold uppercase mb-0.5">After</div>
           <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {after ?? '—'}
+            {tryFormat(after) ?? '—'}
           </pre>
         </div>
       </div>
