@@ -480,12 +480,7 @@ export default function GraphPage() {
               const tryParseJson = (str) => {
                 try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
               }
-              const asPythonToJson = (str) => str
-                .replace(/'/g, '"')
-                .replace(/\bTrue\b/g, 'true')
-                .replace(/\bFalse\b/g, 'false')
-                .replace(/\bNone\b/g, 'null')
-              const parsed = tryParseJson(r.value) ?? tryParseJson(asPythonToJson(r.value))
+              const parsed = tryParseJson(r.value)
               if (parsed !== undefined && typeof parsed === 'object' && parsed !== null) {
                 displayValue = JSON.stringify(parsed, null, 2)
               }

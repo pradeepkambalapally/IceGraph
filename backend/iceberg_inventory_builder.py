@@ -356,8 +356,8 @@ class IcebergInventoryBuilder:
                     "partition_spec_id": row["default-spec-id"],
                     "current_schema_id": row["current-schema-id"],
                     "sort_order_id": row["default-sort-order-id"],
-                    "refs": refs,
-                    "properties": json.loads(row.properties) if row.properties else {},
+                    "refs": json.dumps(refs),
+                    "properties": row.properties if row.properties else "{}",
                     "child_files": child_files,
                     "hidden_metadata": {
                         "color_append": 1 - index / (1.5 * n),
