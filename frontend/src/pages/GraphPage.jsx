@@ -144,20 +144,6 @@ export default function GraphPage() {
   }, [rawNodes, rawEdges])
 
   const resetZoom = useCallback(() => {
-    isResettingRef.current = true
-    fgRef.current?.zoomToFit(500, 50)
-    setTimeout(() => { isResettingRef.current = false }, 700)
-  }, [])
-
-  const deselectNode = useCallback(() => {
-    setHighlightNodes(new Set())
-    setStickyNode(null)
-    history.replaceState({ graphSelection: null }, '')
-  }, [])
-
-  const resetView = useCallback(() => {
-    deselectNode()
-
     graphData.nodes.forEach(node => {
       node.fx = node.originalFx
       node.fy = node.originalFy
@@ -168,10 +154,24 @@ export default function GraphPage() {
     })
 
     isResettingRef.current = true
+    fgRef.current?.zoomToFit(500, 50)
+    setTimeout(() => { isResettingRef.current = false }, 700)
+  }, [graphData])
+
+  const deselectNode = useCallback(() => {
+    setHighlightNodes(new Set())
+    setStickyNode(null)
+    history.replaceState({ graphSelection: null }, '')
+  }, [])
+
+  const resetView = useCallback(() => {
+    deselectNode()
+
+    isResettingRef.current = true
     setIsFullView(true)
     sessionStorage.removeItem('last_graph_selection')
     resetZoom()
-  }, [deselectNode, graphData, resetZoom])
+  }, [deselectNode, resetZoom])
 
   useEffect(() => {
     if (!history.state || !('graphSelection' in history.state)) {
