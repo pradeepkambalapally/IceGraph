@@ -10,9 +10,9 @@ import {
 import JSONbig from 'json-bigint'
 
 const NODE_FONT_SIZE = 80
-const NODE_FONT = `500 ${NODE_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
+const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
 const LINK_FONT_SIZE = 60
-const LINK_FONT = `500 ${LINK_FONT_SIZE}px "Inter","system-ui","-apple-system","Segoe UI","Roboto","sans-serif"`
+const LINK_FONT = `500 ${LINK_FONT_SIZE}px "system-ui"`
 const NODE_PADDING = 40
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
@@ -301,7 +301,7 @@ export default function GraphPage() {
     ctx.textBaseline = 'middle'
 
     ctx.strokeStyle = '#000000'
-    ctx.lineWidth = 7.00
+    ctx.lineWidth = 10.00
     ctx.lineJoin = 'round'
     ctx.strokeText(label, node.x, node.y)
 
