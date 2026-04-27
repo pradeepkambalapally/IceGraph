@@ -1,3 +1,4 @@
+import os
 import arrow
 import json
 import threading
@@ -15,7 +16,12 @@ from pyspark.sql import functions as F
 from typing import Optional, Dict, Any
 from spark_connect import open_spark_connect_session
 from icegraph_logger import logger
-from constants import FileType, UI_NEWLINE, MAIN_BRANCH_ICEBERG_TABLE_NAME
+from constants import (
+    FileType,
+    UI_NEWLINE,
+    MAIN_BRANCH_ICEBERG_TABLE_NAME,
+    MAX_SNAPSHOTS_TO_COMPUTE,
+)
 from utils import (
     to_arrow_tz,
     get_metadata_row_slim_df_from_path,
@@ -23,6 +29,10 @@ from utils import (
     update_col_metric,
     format_partition,
     format_schemas_to_full_dict,
+)
+
+max_snapshots_to_compute = int(
+    os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE)
 )
 
 
@@ -74,6 +84,7 @@ class IcebergInventoryBuilder:
                 f"[{self._table_name}] collect_snapshots failed", exc_info=True
             )
             self._errors["collect_snapshots"] = str(e)
+            return self._build_result()
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -377,6 +388,11 @@ class IcebergInventoryBuilder:
         if self._end_snapshot_cutoff:
             snapshots_df = snapshots_df.filter(
                 F.col("committed_at") <= F.lit(str(self._end_snapshot_cutoff))
+            )
+
+        if snapshots_df.count() > max_snapshots_to_compute:
+            raise ValueError(
+                f"Too many snapshots to compute. Maximum is {max_snapshots_to_compute}."
             )
 
         self._snapshot_rows = snapshots_df.collect()
