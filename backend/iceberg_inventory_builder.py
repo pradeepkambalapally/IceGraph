@@ -454,12 +454,12 @@ class IcebergInventoryBuilder:
                 seen_paths.add(m.path)
                 deduped_manifest_rows.append(m)
 
-        avro_entries = self._timed(
-            "collect_avro_entries",
-            lambda: self._collect_avro_entries(deduped_manifest_rows),
+        data_files = self._timed(
+            "collect_data_files",
+            lambda: self._collect_data_files(deduped_manifest_rows),
         )
-        self._process_manifests(deduped_manifest_rows, avro_entries)
-        self._data_files = [self._format_data_file(entry) for entry in avro_entries]
+        self._process_manifests(deduped_manifest_rows, data_files)
+        self._data_files = [self._format_data_file(entry) for entry in data_files]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
@@ -528,7 +528,7 @@ class IcebergInventoryBuilder:
                 if snap:
                     snap["child_files"].extend(paths)
 
-    def _collect_avro_entries(self, manifest_rows):
+    def _collect_data_files(self, manifest_rows):
         avro_df = None
         for m_row in manifest_rows:
             try:
