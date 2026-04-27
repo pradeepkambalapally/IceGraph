@@ -32,12 +32,12 @@ def to_arrow_tz(timestamp, timezone: str):
     return arrow.get(timestamp).replace(tzinfo=timezone)
 
 
-def format_partition(partition_row: Row) -> str:
-    if not partition_row:
+def format_partition(partition_dict: dict) -> str:
+    if not partition_dict:
         return "Root"
 
     partitions_repr = []
-    for key, value in partition_row.asDict(recursive=True).items():
+    for key, value in partition_dict.items():
         if key.endswith("_hour") and isinstance(value, int):
             with suppress(Exception):
                 repr_value = arrow.Arrow.utcfromtimestamp(value * 3600).format(

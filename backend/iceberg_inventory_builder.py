@@ -1,3 +1,4 @@
+from pyspark.sql.window import Window
 import os
 import arrow
 import json
@@ -457,7 +458,8 @@ class IcebergInventoryBuilder:
             "collect_avro_entries",
             lambda: self._collect_avro_entries(deduped_manifest_rows),
         )
-        self._process_avro_entries(avro_entries, deduped_manifest_rows)
+        self._process_manifests(deduped_manifest_rows, avro_entries)
+        self._data_files = [self._format_data_file(entry) for entry in avro_entries]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
@@ -535,6 +537,10 @@ class IcebergInventoryBuilder:
                     .load(m_row.path)
                     .select("status", "data_file")
                     .withColumn("_manifest_path", F.lit(m_row.path))
+                    .withColumn(
+                        "_added_snapshot_timestamp",
+                        F.lit(m_row.added_snapshot_timestamp),
+                    )
                 )
                 avro_df = (
                     df
@@ -547,43 +553,90 @@ class IcebergInventoryBuilder:
                     exc_info=True,
                 )
                 self._errors[m_row.path] = f"Avro read error: {e}"
-        return avro_df.collect() if avro_df is not None else []
 
-    def _process_avro_entries(self, avro_entries, manifest_rows):
+        if avro_df is None:
+            return []
+
+        window = Window.partitionBy("data_file.file_path").orderBy(
+            "_added_snapshot_timestamp"
+        )
+        avro_df = avro_df.withColumn("_row_num", F.row_number().over(window))
+
+        earliest_df = avro_df.filter(F.col("_row_num") == 1).select(
+            F.col("data_file.file_path").alias("_join_key"),
+            F.col("data_file"),
+            F.col("_added_snapshot_timestamp"),
+        )
+
+        manifest_entries_df = (
+            avro_df.groupBy("data_file.file_path")
+            .agg(
+                F.collect_list(
+                    F.struct(
+                        F.col("_manifest_path").alias("path"),
+                        F.col("status").alias("status"),
+                    )
+                ).alias("_manifest_entries")
+            )
+            .withColumnRenamed("file_path", "_join_key")
+        )
+
+        grouped_df = (
+            manifest_entries_df.join(earliest_df, on="_join_key", how="inner")
+            .select(
+                "_manifest_entries",
+                "_added_snapshot_timestamp",
+                "data_file.file_path",
+                "data_file.content",
+                "data_file.file_format",
+                "data_file.file_size_in_bytes",
+                "data_file.record_count",
+                "data_file.partition",
+                "data_file.sort_order_id",
+                "data_file.split_offsets",
+                "data_file.key_metadata",
+                "data_file.equality_ids",
+            )
+            .orderBy(F.desc("_added_snapshot_timestamp"))
+        )
+
+        return [row.asDict(recursive=True) for row in grouped_df.collect()]
+
+    def _process_manifests(self, manifest_rows, avro_entries):
         entries_by_manifest = defaultdict(list)
         for entry in avro_entries:
-            entries_by_manifest[entry._manifest_path].append(entry)
+            for manifest_entry in entry["_manifest_entries"]:
+                entries_by_manifest[manifest_entry["path"]].append(
+                    {
+                        "status": manifest_entry["status"],
+                        "file_path": entry["file_path"],
+                        "record_count": entry["record_count"],
+                        "partition": entry["partition"],
+                    }
+                )
 
         manifest_info = {m.path: m for m in manifest_rows}
+
         self._manifests = []
-        self._data_files = []
-        processed_data_files = set()
 
-        for m_path, entries in entries_by_manifest.items():
-            self._process_manifest(
-                m_path, entries, manifest_info[m_path], processed_data_files
-            )
+        for m_path, m_row in manifest_info.items():
+            self._process_manifest(m_path, entries_by_manifest[m_path], m_row)
 
-    def _process_manifest(self, m_path, entries, m_row, processed_data_files):
+    def _process_manifest(self, m_path, entries, m_row):
         child_data_paths_status = {"existing": [], "deleted": []}
         total_rows = 0
         all_partitions = set()
 
         for entry in entries:
-            f = entry["data_file"]
-            f_path = f["file_path"]
+            f_path = entry["file_path"]
 
             if entry["status"] == 2:
                 child_data_paths_status["deleted"].append(f_path)
             else:
                 child_data_paths_status["existing"].append(f_path)
 
-            total_rows += f["record_count"]
-            all_partitions.add(format_partition(f.partition))
-
-            if f_path not in processed_data_files:
-                self._data_files.append(self._format_data_file(f))
-                processed_data_files.add(f_path)
+            total_rows += entry["record_count"]
+            all_partitions.add(format_partition(entry["partition"]))
 
         self._manifests.append(
             {
@@ -592,7 +645,7 @@ class IcebergInventoryBuilder:
                 "added_snapshot_id": m_row.added_snapshot_id,
                 "added_snapshot_timestamp": m_row.added_snapshot_timestamp,
                 "partitions": UI_NEWLINE.join(all_partitions),
-                "total_rows_in_downstreem_files": total_rows,
+                "total_rows_in_downstream_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],
                 "deleted_child_files": child_data_paths_status["deleted"],
                 "child_files": child_data_paths_status["existing"]
@@ -601,31 +654,22 @@ class IcebergInventoryBuilder:
         )
 
     def _format_data_file(self, f):
-        if f.content == 0:
+        if f["content"] == 0:
             f_type = FileType.DATA.value
-        elif f.content == 1:
+        elif f["content"] == 1:
             f_type = FileType.POSITION_DELETE.value
         else:
             f_type = FileType.EQUALITY_DELETE.value
 
-        column_metrics = {}
-        update_col_metric(f.lower_bounds, "lower_bound", column_metrics)
-        update_col_metric(f.upper_bounds, "upper_bound", column_metrics)
-        update_col_metric(f.column_sizes, "size_bytes", column_metrics)
-        update_col_metric(f.null_value_counts, "null_count", column_metrics)
-        update_col_metric(f.nan_value_counts, "not_a_number_count", column_metrics)
-        update_col_metric(f.value_counts, "total_values", column_metrics)
-
         return {
             "type": f_type,
             "file_path": f["file_path"],
-            "format": f.file_format,
-            "size_gb": f"{(f.file_size_in_bytes / 1024 ** 3):.10f}",
-            "row_count": f.record_count,
-            "partition": format_partition(f.partition),
-            "sort_order_id": f.sort_order_id,
-            "columns": column_metrics,
-            "split_offsets": UI_NEWLINE.join(map(str, f.split_offsets or [])),
-            "key_metadata": f.key_metadata,
-            "equality_ids": f.equality_ids,
+            "format": f["file_format"],
+            "size_gb": f"{(f['file_size_in_bytes'] / 1024 ** 3):.10f}",
+            "row_count": f["record_count"],
+            "partition": format_partition(f["partition"]),
+            "sort_order_id": f["sort_order_id"],
+            "split_offsets": UI_NEWLINE.join(map(str, f["split_offsets"] or [])),
+            "key_metadata": f["key_metadata"],
+            "equality_ids": f["equality_ids"],
         }
