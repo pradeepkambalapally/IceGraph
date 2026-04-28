@@ -562,7 +562,7 @@ class IcebergInventoryBuilder:
             .withColumnRenamed("file_path", "_join_key")
         )
 
-        grouped_df = (
+        grouped_files_limited_df = (
             manifest_entries_df.join(earliest_df, on="_join_key", how="inner")
             .select(
                 "_manifest_entries",
@@ -580,39 +580,33 @@ class IcebergInventoryBuilder:
                 "data_file.equality_ids",
             )
             .orderBy(F.desc("_added_snapshot_timestamp"))
+            .limit(max_data_files_to_collect + 1)
         )
 
-        if (
-            avro_df.select("data_file.file_path").distinct().count()
-            > max_data_files_to_collect
-        ):
-            excluded_timestamp_threshold = (
-                avro_df.select(
-                    "_added_snapshot_timestamp",
-                    "data_file.file_path",
-                    "_add_snapshot_id",
-                )
-                .distinct()
-                .orderBy(F.desc("_added_snapshot_timestamp"))
-                .limit(max_data_files_to_collect + 1)
-                .tail(1)
-            )[0]
+        global_window = Window.orderBy(F.desc("_added_snapshot_timestamp"))
+        grouped_files_limited_df = grouped_files_limited_df.withColumn(
+            "_row_num", F.row_number().over(global_window)
+        )
 
-            excluded_snapshot_id = excluded_timestamp_threshold["_add_snapshot_id"]
-            excluded_timestamp_threshold = excluded_timestamp_threshold[
-                "_added_snapshot_timestamp"
-            ]
-            print(
-                excluded_snapshot_id, excluded_timestamp_threshold
-            )  # TODO: remove print, and add a warning to the frontend.
-            # Need to give in the UI sql to get the child files of the excluded snapshot.
-            # Validate the output
-
-            grouped_df = grouped_df.filter(
-                F.col("_added_snapshot_timestamp") > excluded_timestamp_threshold
+        cutoff_timestamp = (
+            grouped_files_limited_df.filter(
+                F.col("_row_num") == max_data_files_to_collect + 1
             )
+            .agg(
+                F.coalesce(
+                    F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")
+                ).alias("_cutoff")
+            )
+            .select("_cutoff")
+        )
 
-        return [row.asDict(recursive=True) for row in grouped_df.collect()]
+        result_df = (
+            grouped_files_limited_df.join(F.broadcast(cutoff_timestamp), how="cross")
+            .filter(F.col("_added_snapshot_timestamp") > F.col("_cutoff"))
+            .drop("_row_num", "_cutoff")
+        )
+
+        return [row.asDict(recursive=True) for row in result_df.collect()]
 
     def _aggreate_manifests_to_collect_data_files(self, manifest_rows):
         avro_df = None
