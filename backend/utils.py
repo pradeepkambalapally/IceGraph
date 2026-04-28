@@ -1,9 +1,7 @@
 from typing import List
 import json
 from pyspark.sql import functions as F
-import os
 from contextlib import suppress
-from datetime import datetime
 from typing import Any, Dict
 
 import arrow
@@ -74,33 +72,9 @@ def format_node_info(file_info: Dict[str, Any]) -> str:
             "child_files",
             "existing_child_files",
             "deleted_child_files",
-            "columns",
             "hidden_metadata",  # Not showing to the user
         ]
     )
-
-    if file_info.get("columns") is not None:
-        all_stats_keys = set()
-        for col_stats in file_info["columns"].values():
-            all_stats_keys.update(col_stats.keys())
-
-        sorted_keys = sorted(list(all_stats_keys))
-
-        header_cols = [_format_cell(k) for k in sorted_keys]
-        header = (
-            f"{UI_SECTION_NEWLINE}columns: {_format_cell('Column ID')} | "
-            + " | ".join(header_cols)
-        )
-
-        separator = "-" * len(header)
-        formatted_info += f"{header}{UI_NEWLINE}{separator}"
-
-        for col_name, stats in file_info["columns"].items():
-            row_name = _format_cell(col_name)
-            row_values = [_format_cell(stats.get(key, "N/A")) for key in sorted_keys]
-
-            row_str = f"{UI_NEWLINE}{row_name} | " + " | ".join(row_values)
-            formatted_info += row_str
 
     if file_info.get("existing_child_files") is not None:
         formatted_info += (
@@ -164,24 +138,6 @@ def get_json_metadata_from_path(metadata_path: str) -> Dict[str, Any]:
     )
 
     return row.asDict(recursive=True)
-
-
-def update_col_metric(source_list, metric_name, column_metrics):
-    if source_list is None:
-        return
-
-    for row in source_list:
-        col_id = row.key
-        if col_id not in column_metrics:
-            column_metrics[col_id] = {}
-        column_metrics[col_id][metric_name] = str(row.value)
-
-
-def _format_cell(val: Any, width=40) -> str:
-    s_val = str(val)
-    if len(s_val) > width:
-        return s_val[: width - 3] + "..."
-    return f"{s_val:<{width}}"
 
 
 def _format_list_for_ui(list_to_format: List[str]) -> str:
