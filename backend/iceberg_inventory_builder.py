@@ -541,7 +541,7 @@ class IcebergInventoryBuilder:
             return []
 
         window = Window.partitionBy("data_file.file_path").orderBy(
-            "_added_snapshot_timestamp"
+            F.desc("_added_snapshot_timestamp")
         )
         avro_df = avro_df.withColumn("_row_num", F.row_number().over(window))
 
@@ -565,7 +565,7 @@ class IcebergInventoryBuilder:
             .withColumnRenamed("file_path", "_join_key")
         )
 
-        grouped_files_limited_df = (
+        grouped_files_df = (
             manifest_entries_df.join(earliest_df, on="_join_key", how="inner")
             .select(
                 "_manifest_entries",
@@ -583,8 +583,8 @@ class IcebergInventoryBuilder:
                 "data_file.equality_ids",
             )
             .orderBy(F.desc("_added_snapshot_timestamp"))
-            .limit(max_data_files_to_collect + 1)
         )
+        grouped_files_limited_df = grouped_files_df.limit(max_data_files_to_collect + 1)
 
         global_window = Window.orderBy(F.desc("_added_snapshot_timestamp"))
         grouped_files_limited_df = grouped_files_limited_df.withColumn(
@@ -675,12 +675,13 @@ class IcebergInventoryBuilder:
                 "message": (inspect.cleandoc(f"""
                         Showing partial data! the number of data files exceeds the limit of {max_data_files_to_collect}!
 
-                        Latest snapshot that got cut off:
+                        Latest snapshot that got cut off (Meaning snapshots above it are included):
                         ID: {m_row.added_snapshot_id}
                         Timestamp: {m_row.added_snapshot_timestamp}
 
-                        The cutoff is applied at the snapshot boundary, meaning that all data files that belong to a snapshot that was cut off are excluded entirely.
-                        So all data files you do see belong to complete snapshots!
+                        The cutoff is applied at the snapshot boundary — all data files belonging to cut-off snapshots are excluded,
+                        unless a newer visible snapshot also references them, in which case they are included.
+                        Every data file you see is referenced by at least one snapshot that is newer than the cut-off snapshot.
                         """)),
                 "timestamp": m_row.added_snapshot_timestamp,
             }

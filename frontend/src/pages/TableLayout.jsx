@@ -362,7 +362,7 @@ export default function TableLayout() {
                       </div>
                       <div className="px-5 py-4">
                         <span className="text-[0.6rem] font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
-                        <div className="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto">{err}</div>
+                        <div className="text-xs text-red-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{err}</div>
                       </div>
                     </div>
                   ))}
@@ -383,7 +383,7 @@ export default function TableLayout() {
                       </div>
                       <div className="px-5 py-4">
                         <span className="text-[0.6rem] font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
-                        <div className="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto">{msg}</div>
+                        <div className="text-xs text-amber-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{msg}</div>
                       </div>
                     </div>
                   ))}
