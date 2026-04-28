@@ -8,6 +8,7 @@ def normalize_graph_data(table_data: Dict[str, Any]) -> Dict[str, Any]:
     inventory = table_data.get("inventory", [])
     metadata_specs = table_data.get("metadata_specs", {})
     errors = table_data.get("errors", {})
+    warnings = table_data.get("warnings", {})
 
     nodes_data = []
     edges_data = []
@@ -58,4 +59,5 @@ def normalize_graph_data(table_data: Dict[str, Any]) -> Dict[str, Any]:
         "edges": edges_data,
         "metadata": metadata_specs,
         "errors": errors,
+        "warnings": warnings,
     }

@@ -7,14 +7,16 @@ export function TableSpecsProvider({ children }) {
   const [selectionDetail, setSelectionDetail] = useState(null)
   const [rawData, setRawData] = useState(null)
   const [errors, setErrors] = useState({})
-  const [errorsOpen, setErrorsOpen] = useState(false)
+  const [warnings, setWarnings] = useState({})
+  const [issuesOpen, setIssuesOpen] = useState(false)
   return (
     <TableSpecsContext.Provider value={{
       detailsOpen, setDetailsOpen,
       selectionDetail, setSelectionDetail,
       rawData, setRawData,
       errors, setErrors,
-      errorsOpen, setErrorsOpen
+      warnings, setWarnings,
+      issuesOpen, setIssuesOpen
     }}>
       {children}
     </TableSpecsContext.Provider>
