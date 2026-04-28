@@ -461,12 +461,24 @@ class IcebergInventoryBuilder:
                 seen_paths.add(m.path)
                 deduped_manifest_rows.append(m)
 
+        deduped_manifest_rows = sorted(
+            deduped_manifest_rows,
+            key=lambda m: m.added_snapshot_timestamp,
+            reverse=True,
+        )
+
         data_files = self._timed(
             "collect_data_files",
             lambda: self._collect_data_files(deduped_manifest_rows),
         )
-        self._collect_all_relevant_manifests(deduped_manifest_rows, data_files)
-        self._data_files = [self._process_data_file(entry) for entry in data_files]
+        sorted_data_files = sorted(
+            data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True
+        )
+
+        self._collect_all_relevant_manifests(deduped_manifest_rows, sorted_data_files)
+        self._data_files = [
+            self._process_data_file(entry) for entry in sorted_data_files
+        ]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
