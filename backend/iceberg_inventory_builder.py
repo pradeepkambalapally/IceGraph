@@ -55,6 +55,7 @@ class IcebergInventoryBuilder:
 
         self._spark_tz = self._spark.conf.get("spark.sql.session.timeZone")
         self._errors: Dict[str, str] = {}
+        self._warnings: Dict[str, str] = {}
         self._snapshots_lock = threading.Lock()
 
         self._start_snapshot_cutoff = None
@@ -147,6 +148,7 @@ class IcebergInventoryBuilder:
         return {
             "inventory": inventory,
             "errors": self._errors,
+            "warnings": self._warnings,
             "metadata_specs": metadata_specs,
         }
 
@@ -462,8 +464,8 @@ class IcebergInventoryBuilder:
             "collect_data_files",
             lambda: self._collect_data_files(deduped_manifest_rows),
         )
-        self._process_manifests(deduped_manifest_rows, data_files)
-        self._data_files = [self._format_data_file(entry) for entry in data_files]
+        self._collect_all_relevant_manifests(deduped_manifest_rows, data_files)
+        self._data_files = [self._process_data_file(entry) for entry in data_files]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
@@ -637,7 +639,7 @@ class IcebergInventoryBuilder:
 
         return avro_df
 
-    def _process_manifests(self, manifest_rows, avro_entries):
+    def _collect_all_relevant_manifests(self, manifest_rows, avro_entries):
         entries_by_manifest = defaultdict(list)
         for entry in avro_entries:
             for manifest_entry in entry["_manifest_entries"]:
@@ -661,6 +663,11 @@ class IcebergInventoryBuilder:
         child_data_paths_status = {"existing": [], "deleted": []}
         total_rows = 0
         all_partitions = set()
+
+        if len(entries) == 0:
+            self._warnings["snapshot_cutoff"] = (
+                f"Data files cutoff was activated. You see partial data, as combined, the amount of data files asked for is larger than {max_data_files_to_collect}."
+            )
 
         for entry in entries:
             f_path = entry["file_path"]
@@ -688,7 +695,7 @@ class IcebergInventoryBuilder:
             }
         )
 
-    def _format_data_file(self, f):
+    def _process_data_file(self, f):
         if f["content"] == 0:
             f_type = FileType.DATA.value
         elif f["content"] == 1:
