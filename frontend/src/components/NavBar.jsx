@@ -40,9 +40,9 @@ export default function NavBar() {
 
     const url = new URL(window.location.href)
     url.searchParams.set('dup', '1')
-    url.searchParams.set('cache_id', cacheId)
+    url.searchParams.set('cache_id', crypto.randomUUID())
 
-    const cacheKey = cacheId
+    const cacheKey = url.toString()
     const newTab = window.open('about:blank', '_blank')
 
     try {

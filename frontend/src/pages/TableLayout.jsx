@@ -163,6 +163,7 @@ export default function TableLayout() {
           const cached = await getCachedData(cacheKey)
           if (cached) {
             setRawData(cached)
+            const data = JSONbig({ storeAsString: true }).parse(cached)
             setGraphData(buildGraphData(data))
             setErrors(data.errors || {})
             setWarnings(data.warnings || {})
