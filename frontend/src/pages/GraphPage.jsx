@@ -410,9 +410,9 @@ export default function GraphPage() {
         linkCanvasObject={paintLink}
 
         onNodeClick={handleNodeClick}
-        onNodeDrag={() => setIsFullView(false)}
-        onNodeDragEnd={() => setIsFullView(false)}
-        onZoom={() => { if (!isResettingRef.current) setIsFullView(false) }}
+        onNodeDrag={() => setTimeout(() => setIsFullView(false), 0)}
+        onNodeDragEnd={() => setTimeout(() => setIsFullView(false), 0)}
+        onZoom={() => { if (!isResettingRef.current) setTimeout(() => setIsFullView(false), 0) }}
 
         warmupTicks={1}
         cooldownTicks={0}
@@ -426,7 +426,7 @@ export default function GraphPage() {
               ? 'bg-[#2E86C1] text-white hover:bg-[#2471a3]'
               : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
             }`}
-          onClick={resetView}
+          onClick={() => !isFullView && resetView()}
         >
           Reset Full View
         </button>

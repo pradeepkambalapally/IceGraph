@@ -10,7 +10,7 @@ export default function NavBar() {
   const navigate = useNavigate()
   const isTablePage = useMatch('/table/*')
   const tableName = searchParams.get('table')
-  const { detailsOpen, setDetailsOpen, rawData, errors, errorsOpen, setErrorsOpen } = useTableSpecs()
+  const { detailsOpen, setDetailsOpen, rawData, errors, warnings, issuesOpen, setIssuesOpen } = useTableSpecs()
   const [aboutOpen, setAboutOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
@@ -43,7 +43,6 @@ export default function NavBar() {
     url.searchParams.set('cache_id', crypto.randomUUID())
 
     const cacheKey = url.toString()
-
     const newTab = window.open('about:blank', '_blank')
 
     try {
@@ -109,15 +108,15 @@ export default function NavBar() {
               <NavLink to={`/table/timeline${tabSearch}`} className={tabClass}>Timeline</NavLink>
               <NavLink to={`/table/filetree${tabSearch}`} className={tabClass}>FileTree</NavLink>
 
-              {errors && Object.keys(errors).length > 0 && (
+              {((errors && Object.keys(errors).length > 0) || (warnings && Object.keys(warnings).length > 0)) && (
                 <button
-                  onClick={() => setErrorsOpen(p => !p)}
-                  className={`text-sm font-bold px-3 py-1 rounded-md transition border ${errorsOpen
-                    ? 'bg-red-600 border-red-600 text-white'
-                    : 'border-red-900/50 text-red-500 hover:bg-red-950/30 hover:border-red-800'
+                  onClick={() => setIssuesOpen(p => !p)}
+                  className={`text-sm font-bold px-3 py-1 rounded-md transition border ${issuesOpen
+                    ? (Object.keys(errors || {}).length > 0 ? 'bg-red-600 border-red-600 text-white' : 'bg-amber-600 border-amber-600 text-white')
+                    : (Object.keys(errors || {}).length > 0 ? 'border-red-900/50 text-red-500 hover:bg-red-950/30' : 'border-amber-900/50 text-amber-500 hover:bg-amber-950/30')
                     }`}
                 >
-                  Errors ({Object.keys(errors).length})
+                  Issues ({Object.keys(errors || {}).length + Object.keys(warnings || {}).length})
                 </button>
               )}
 
@@ -187,15 +186,15 @@ export default function NavBar() {
             <NavLink to={`/table/timeline${tabSearch}`} className={mobileTabClass}>Timeline</NavLink>
             <NavLink to={`/table/filetree${tabSearch}`} className={mobileTabClass}>FileTree</NavLink>
 
-            {errors && Object.keys(errors).length > 0 && (
+            {((errors && Object.keys(errors).length > 0) || (warnings && Object.keys(warnings).length > 0)) && (
               <button
-                onClick={() => { setErrorsOpen(p => !p); setMenuOpen(false) }}
-                className={`text-sm font-bold px-3 py-2 rounded-md transition text-left ${errorsOpen
-                  ? 'bg-red-600 text-white'
-                  : 'text-red-500 hover:bg-red-950/30'
+                onClick={() => { setIssuesOpen(p => !p); setMenuOpen(false) }}
+                className={`text-sm font-bold px-3 py-2 rounded-md transition text-left ${issuesOpen
+                  ? (Object.keys(errors || {}).length > 0 ? 'bg-red-600 text-white' : 'bg-amber-600 text-white')
+                  : (Object.keys(errors || {}).length > 0 ? 'text-red-500 hover:bg-red-950/30' : 'text-amber-500 hover:bg-amber-950/30')
                   }`}
               >
-                Errors ({Object.keys(errors).length})
+                Issues ({Object.keys(errors || {}).length + Object.keys(warnings || {}).length})
               </button>
             )}
 

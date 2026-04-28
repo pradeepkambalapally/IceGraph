@@ -14,7 +14,7 @@ import { getCachedData } from '../utils/cache_utils'
 export default function TableLayout() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { detailsOpen, setDetailsOpen, selectionDetail, setSelectionDetail, setRawData, setErrors, errorsOpen, setErrorsOpen, errors } = useTableSpecs()
+  const { detailsOpen, setDetailsOpen, selectionDetail, setSelectionDetail, setRawData, setErrors, setWarnings, issuesOpen, setIssuesOpen, errors, warnings } = useTableSpecs()
   const detailPanelRef = useRef(null)
 
   useEffect(() => {
@@ -26,18 +26,20 @@ export default function TableLayout() {
       if (e.key === 'Escape') {
         setDetailsOpen(false);
         setSelectionDetail(null);
-        setErrorsOpen(false);
+        setIssuesOpen(false);
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [setDetailsOpen, setSelectionDetail, setErrorsOpen])
+  }, [setDetailsOpen, setSelectionDetail, setIssuesOpen])
 
   useEffect(() => {
-    if (errors && Object.keys(errors).length > 0) {
-      setErrorsOpen(true);
+    const hasErrors = errors && Object.keys(errors).length > 0;
+    const hasWarnings = warnings && Object.keys(warnings).length > 0;
+    if (hasErrors || hasWarnings) {
+      setIssuesOpen(true);
     }
-  }, [errors, setErrorsOpen]);
+  }, [errors, warnings, setIssuesOpen]);
 
   const tableName = searchParams.get('table') || ''
   const startSnapshot = searchParams.get('start_snapshot_id') || ''
@@ -126,6 +128,7 @@ export default function TableLayout() {
 
         setGraphData(buildGraphData(data))
         setErrors(data.errors || {})
+        setWarnings(data.warnings || {})
         setLoading(false)
         setJobId(null)
 
@@ -163,6 +166,7 @@ export default function TableLayout() {
             const data = JSONbig({ storeAsString: true }).parse(cached)
             setGraphData(buildGraphData(data))
             setErrors(data.errors || {})
+            setWarnings(data.warnings || {})
             setLoading(false)
 
             const cleanUrl = new URL(window.location.href)
@@ -185,6 +189,7 @@ export default function TableLayout() {
 
     setError(null)
     setErrors({})
+    setWarnings({})
     submitGraphJob(tableName, startSnapshot, endSnapshot)
 
   }, [tableName, startSnapshot, endSnapshot])
@@ -321,44 +326,69 @@ export default function TableLayout() {
           </div>
         </div>
       )}
-      {errorsOpen && errors && (
+      {issuesOpen && (errors || warnings) && (
         <div
           className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center font-sans"
-          onClick={() => setErrorsOpen(false)}
+          onClick={() => setIssuesOpen(false)}
         >
           <div
-            className="w-[50vw] min-w-[400px] max-w-[800px] bg-[#1a202c] rounded-xl shadow-2xl border border-red-900/40 max-h-[80vh] flex flex-col overflow-hidden"
+            className="w-[50vw] min-w-[400px] max-w-[800px] bg-[#1a202c] rounded-xl shadow-2xl border border-slate-800 max-h-[80vh] flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-red-900/30 bg-red-950/20 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/30 bg-slate-800/20 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="font-bold text-[#e2e8f0] text-base tracking-tight">Processing Errors</span>
+                <span className="font-bold text-[#e2e8f0] text-base tracking-tight">System Issues</span>
               </div>
               <button
-                className="w-7 h-7 rounded-full bg-red-900/20 text-red-400 flex items-center justify-center text-base cursor-pointer hover:bg-red-900/40 hover:text-red-200 transition"
-                onClick={() => setErrorsOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-800/30 text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-slate-800/50 hover:text-slate-200 transition"
+                onClick={() => setIssuesOpen(false)}
               >
                 ✕
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-6 flex flex-col gap-6">
-              {Object.entries(errors).map(([op, err], i) => (
-                <div key={i} className="bg-[#0d1117] rounded-xl border border-red-900/30 overflow-hidden shadow-inner flex flex-col">
-                  <div className="px-5 py-4 border-b border-red-900/10">
-                    <span className="text-[0.65rem] font-bold text-red-400 uppercase tracking-widest block mb-2">Operation</span>
-                    <div className="text-sm font-mono text-[#e2e8f0] break-all leading-relaxed bg-red-900/5 px-2 py-1 rounded">
-                      {op}
-                    </div>
+            <div className="overflow-y-auto px-6 py-6 flex flex-col gap-8">
+              {errors && Object.keys(errors).length > 0 && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <h3 className="text-red-400 text-xs font-bold uppercase tracking-widest">Critical Errors</h3>
                   </div>
-                  <div className="px-5 py-4 bg-red-900/5">
-                    <span className="text-[0.65rem] font-bold text-red-400 uppercase tracking-widest block mb-2">Error message</span>
-                    <div className="text-xs font-mono text-[#e2e8f0] whitespace-pre-wrap leading-relaxed overflow-x-auto">
-                      {err}
+                  {Object.entries(errors).map(([op, err], i) => (
+                    <div key={`err-${i}`} className="bg-red-950/10 rounded-xl border border-red-900/30 overflow-hidden flex flex-col">
+                      <div className="px-5 py-3 border-b border-red-900/10 bg-red-900/5">
+                        <span className="text-[0.6rem] font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Source</span>
+                        <div className="text-xs font-mono text-red-200 break-all">{op}</div>
+                      </div>
+                      <div className="px-5 py-4">
+                        <span className="text-[0.6rem] font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
+                        <div className="text-xs text-red-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{err}</div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {warnings && Object.keys(warnings).length > 0 && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <h3 className="text-amber-400 text-xs font-bold uppercase tracking-widest">Processing Warnings</h3>
+                  </div>
+                  {Object.entries(warnings).map(([op, msg], i) => (
+                    <div key={`warn-${i}`} className="bg-amber-950/10 rounded-xl border border-amber-900/30 overflow-hidden flex flex-col">
+                      <div className="px-5 py-3 border-b border-amber-900/10 bg-amber-900/5">
+                        <span className="text-[0.6rem] font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Context</span>
+                        <div className="text-xs font-mono text-amber-200 break-all">{op}</div>
+                      </div>
+                      <div className="px-5 py-4">
+                        <span className="text-[0.6rem] font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
+                        <div className="text-xs text-amber-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{msg}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

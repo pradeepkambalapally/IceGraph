@@ -1,3 +1,5 @@
+from pyspark.sql.window import Window
+import inspect
 import os
 import arrow
 import json
@@ -21,18 +23,22 @@ from constants import (
     UI_NEWLINE,
     MAIN_BRANCH_ICEBERG_TABLE_NAME,
     MAX_SNAPSHOTS_TO_COMPUTE,
+    MAX_DATA_FILES_TO_COLLECT,
 )
 from utils import (
     to_arrow_tz,
     get_metadata_row_slim_df_from_path,
     get_json_metadata_from_path,
-    update_col_metric,
     format_partition,
     format_schemas_to_full_dict,
 )
 
 max_snapshots_to_compute = int(
     os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE)
+)
+
+max_data_files_to_collect = int(
+    os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT)
 )
 
 
@@ -50,6 +56,7 @@ class IcebergInventoryBuilder:
 
         self._spark_tz = self._spark.conf.get("spark.sql.session.timeZone")
         self._errors: Dict[str, str] = {}
+        self._warnings: Dict[str, Dict[str, str]] = {}
         self._snapshots_lock = threading.Lock()
 
         self._start_snapshot_cutoff = None
@@ -142,6 +149,7 @@ class IcebergInventoryBuilder:
         return {
             "inventory": inventory,
             "errors": self._errors,
+            "warnings": {key: warn["message"] for key, warn in self._warnings.items()},
             "metadata_specs": metadata_specs,
         }
 
@@ -453,11 +461,24 @@ class IcebergInventoryBuilder:
                 seen_paths.add(m.path)
                 deduped_manifest_rows.append(m)
 
-        avro_entries = self._timed(
-            "collect_avro_entries",
-            lambda: self._collect_avro_entries(deduped_manifest_rows),
+        deduped_manifest_rows = sorted(
+            deduped_manifest_rows,
+            key=lambda m: m.added_snapshot_timestamp,
+            reverse=True,
         )
-        self._process_avro_entries(avro_entries, deduped_manifest_rows)
+
+        data_files = self._timed(
+            "collect_data_files",
+            lambda: self._collect_data_files(deduped_manifest_rows),
+        )
+        sorted_data_files = sorted(
+            data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True
+        )
+
+        self._collect_all_relevant_manifests(deduped_manifest_rows, sorted_data_files)
+        self._data_files = [
+            self._process_data_file(entry) for entry in sorted_data_files
+        ]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
@@ -526,7 +547,83 @@ class IcebergInventoryBuilder:
                 if snap:
                     snap["child_files"].extend(paths)
 
-    def _collect_avro_entries(self, manifest_rows):
+    def _collect_data_files(self, manifest_rows):
+        avro_df = self._aggreate_manifests_to_collect_data_files(manifest_rows)
+        if avro_df is None:
+            return []
+
+        window = Window.partitionBy("data_file.file_path").orderBy(
+            F.desc("_added_snapshot_timestamp")
+        )
+        avro_df = avro_df.withColumn("_row_num", F.row_number().over(window))
+
+        earliest_df = avro_df.filter(F.col("_row_num") == 1).select(
+            F.col("data_file.file_path").alias("_join_key"),
+            F.col("data_file"),
+            F.col("_added_snapshot_timestamp"),
+            F.col("_add_snapshot_id"),
+        )
+
+        manifest_entries_df = (
+            avro_df.groupBy("data_file.file_path")
+            .agg(
+                F.collect_list(
+                    F.struct(
+                        F.col("_manifest_path").alias("path"),
+                        F.col("status").alias("status"),
+                    )
+                ).alias("_manifest_entries")
+            )
+            .withColumnRenamed("file_path", "_join_key")
+        )
+
+        grouped_files_df = (
+            manifest_entries_df.join(earliest_df, on="_join_key", how="inner")
+            .select(
+                "_manifest_entries",
+                "_add_snapshot_id",
+                "_added_snapshot_timestamp",
+                "data_file.file_path",
+                "data_file.content",
+                "data_file.file_format",
+                "data_file.file_size_in_bytes",
+                "data_file.record_count",
+                "data_file.partition",
+                "data_file.sort_order_id",
+                "data_file.split_offsets",
+                "data_file.key_metadata",
+                "data_file.equality_ids",
+            )
+            .orderBy(F.desc("_added_snapshot_timestamp"))
+        )
+        grouped_files_limited_df = grouped_files_df.limit(max_data_files_to_collect + 1)
+
+        global_window = Window.orderBy(F.desc("_added_snapshot_timestamp"))
+        grouped_files_limited_df = grouped_files_limited_df.withColumn(
+            "_row_num", F.row_number().over(global_window)
+        )
+
+        cutoff_timestamp = (
+            grouped_files_limited_df.filter(
+                F.col("_row_num") == max_data_files_to_collect + 1
+            )
+            .agg(
+                F.coalesce(
+                    F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")
+                ).alias("_cutoff")
+            )
+            .select("_cutoff")
+        )
+
+        result_df = (
+            grouped_files_limited_df.join(F.broadcast(cutoff_timestamp), how="cross")
+            .filter(F.col("_added_snapshot_timestamp") > F.col("_cutoff"))
+            .drop("_row_num", "_cutoff")
+        )
+
+        return [row.asDict(recursive=True) for row in result_df.collect()]
+
+    def _aggreate_manifests_to_collect_data_files(self, manifest_rows):
         avro_df = None
         for m_row in manifest_rows:
             try:
@@ -535,6 +632,11 @@ class IcebergInventoryBuilder:
                     .load(m_row.path)
                     .select("status", "data_file")
                     .withColumn("_manifest_path", F.lit(m_row.path))
+                    .withColumn(
+                        "_added_snapshot_timestamp",
+                        F.lit(m_row.added_snapshot_timestamp),
+                    )
+                    .withColumn("_add_snapshot_id", F.lit(m_row.added_snapshot_id))
                 )
                 avro_df = (
                     df
@@ -547,43 +649,65 @@ class IcebergInventoryBuilder:
                     exc_info=True,
                 )
                 self._errors[m_row.path] = f"Avro read error: {e}"
-        return avro_df.collect() if avro_df is not None else []
 
-    def _process_avro_entries(self, avro_entries, manifest_rows):
+        return avro_df
+
+    def _collect_all_relevant_manifests(self, manifest_rows, avro_entries):
         entries_by_manifest = defaultdict(list)
         for entry in avro_entries:
-            entries_by_manifest[entry._manifest_path].append(entry)
+            for manifest_entry in entry["_manifest_entries"]:
+                entries_by_manifest[manifest_entry["path"]].append(
+                    {
+                        "status": manifest_entry["status"],
+                        "file_path": entry["file_path"],
+                        "record_count": entry["record_count"],
+                        "partition": entry["partition"],
+                    }
+                )
 
         manifest_info = {m.path: m for m in manifest_rows}
+
         self._manifests = []
-        self._data_files = []
-        processed_data_files = set()
 
-        for m_path, entries in entries_by_manifest.items():
-            self._process_manifest(
-                m_path, entries, manifest_info[m_path], processed_data_files
-            )
+        for m_path, m_row in manifest_info.items():
+            self._process_manifest(m_path, entries_by_manifest[m_path], m_row)
 
-    def _process_manifest(self, m_path, entries, m_row, processed_data_files):
+    def _process_manifest(self, m_path, entries, m_row):
         child_data_paths_status = {"existing": [], "deleted": []}
         total_rows = 0
         all_partitions = set()
 
+        if len(entries) == 0 and (
+            self._warnings.get("data_files_limit_exceeded") is None
+            or self._warnings["data_files_limit_exceeded"]["timestamp"]
+            < m_row.added_snapshot_timestamp
+        ):
+
+            self._warnings["data_files_limit_exceeded"] = {
+                "message": (inspect.cleandoc(f"""
+                        Showing partial data! the number of data files exceeds the limit of {max_data_files_to_collect}!
+
+                        Latest snapshot that got cut off (Meaning snapshots above it are included):
+                        ID: {m_row.added_snapshot_id}
+                        Timestamp: {m_row.added_snapshot_timestamp}
+
+                        The cutoff is applied at the snapshot boundary — all data files belonging to cut-off snapshots are excluded,
+                        unless a newer visible snapshot also references them, in which case they are included.
+                        Every data file you see is referenced by at least one snapshot that is newer than the cut-off snapshot.
+                        """)),
+                "timestamp": m_row.added_snapshot_timestamp,
+            }
+
         for entry in entries:
-            f = entry["data_file"]
-            f_path = f["file_path"]
+            f_path = entry["file_path"]
 
             if entry["status"] == 2:
                 child_data_paths_status["deleted"].append(f_path)
             else:
                 child_data_paths_status["existing"].append(f_path)
 
-            total_rows += f["record_count"]
-            all_partitions.add(format_partition(f.partition))
-
-            if f_path not in processed_data_files:
-                self._data_files.append(self._format_data_file(f))
-                processed_data_files.add(f_path)
+            total_rows += entry["record_count"]
+            all_partitions.add(format_partition(entry["partition"]))
 
         self._manifests.append(
             {
@@ -592,7 +716,7 @@ class IcebergInventoryBuilder:
                 "added_snapshot_id": m_row.added_snapshot_id,
                 "added_snapshot_timestamp": m_row.added_snapshot_timestamp,
                 "partitions": UI_NEWLINE.join(all_partitions),
-                "total_rows_in_downstreem_files": total_rows,
+                "total_rows_in_downstream_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],
                 "deleted_child_files": child_data_paths_status["deleted"],
                 "child_files": child_data_paths_status["existing"]
@@ -600,32 +724,23 @@ class IcebergInventoryBuilder:
             }
         )
 
-    def _format_data_file(self, f):
-        if f.content == 0:
+    def _process_data_file(self, f):
+        if f["content"] == 0:
             f_type = FileType.DATA.value
-        elif f.content == 1:
+        elif f["content"] == 1:
             f_type = FileType.POSITION_DELETE.value
         else:
             f_type = FileType.EQUALITY_DELETE.value
 
-        column_metrics = {}
-        update_col_metric(f.lower_bounds, "lower_bound", column_metrics)
-        update_col_metric(f.upper_bounds, "upper_bound", column_metrics)
-        update_col_metric(f.column_sizes, "size_bytes", column_metrics)
-        update_col_metric(f.null_value_counts, "null_count", column_metrics)
-        update_col_metric(f.nan_value_counts, "not_a_number_count", column_metrics)
-        update_col_metric(f.value_counts, "total_values", column_metrics)
-
         return {
             "type": f_type,
             "file_path": f["file_path"],
-            "format": f.file_format,
-            "size_gb": f"{(f.file_size_in_bytes / 1024 ** 3):.10f}",
-            "row_count": f.record_count,
-            "partition": format_partition(f.partition),
-            "sort_order_id": f.sort_order_id,
-            "columns": column_metrics,
-            "split_offsets": UI_NEWLINE.join(map(str, f.split_offsets or [])),
-            "key_metadata": f.key_metadata,
-            "equality_ids": f.equality_ids,
+            "format": f["file_format"],
+            "size_gb": f"{(f['file_size_in_bytes'] / 1024 ** 3):.10f}",
+            "row_count": f["record_count"],
+            "partition": format_partition(f["partition"]),
+            "sort_order_id": f["sort_order_id"],
+            "split_offsets": UI_NEWLINE.join(map(str, f["split_offsets"] or [])),
+            "key_metadata": f["key_metadata"],
+            "equality_ids": f["equality_ids"],
         }
