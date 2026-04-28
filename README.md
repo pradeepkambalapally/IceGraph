@@ -96,6 +96,8 @@ If you want to change the default values of the application, you can set the fol
 - `MAX_NUMBER_OF_GRAPHS_TO_COMPUTE`: The maximum number of graphs to compute in parallel. Default is 15.
 - `MAX_SNAPSHOTS_TO_SHOW`: The maximum number of snapshots to show in the snapshot selection page. Default is 2000.
 - `COMPUTE_CLEANUP_TIME_SECONDS`: The time to wait before cleaning up the computed graphs. Default is 12.
+- `MAX_DATA_FILES_TO_COLLECT`: The maximum number of data files to collect. Default is 5000.
+- `MAX_SNAPSHOTS_TO_COMPUTE`: The maximum number of snapshots to compute. Default is 50.
 
 ### 3. Run
 
