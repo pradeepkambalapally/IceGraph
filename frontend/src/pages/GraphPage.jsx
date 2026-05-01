@@ -17,6 +17,8 @@ const NODE_PADDING = 40
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
 
+const STICKY_SECTION_LINE_COUNT_COLLAPSE = 15
+
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
 
@@ -46,6 +48,51 @@ function getLineage(nodeId, links) {
   traverse(String(nodeId), 'from')
 
   return relatedNodes
+}
+
+function DetailRow({ r }) {
+  const tryParseJson = (str) => {
+    try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
+  }
+
+  let displayValue = r.value
+  const parsed = tryParseJson(r.value)
+  if (parsed !== undefined && typeof parsed === 'object' && parsed !== null) {
+    displayValue = JSON.stringify(parsed, null, 2)
+  }
+
+  const lineCount = displayValue.split('\n').length
+  const isCollapsible = lineCount > STICKY_SECTION_LINE_COUNT_COLLAPSE
+  const [isCollapsed, setIsCollapsed] = useState(true)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="block font-bold text-slate-500 text-[0.65rem] uppercase tracking-wider">
+          {r.label}
+        </span>
+        {isCollapsible && (
+          <button
+            onClick={() => setIsCollapsed(p => !p)}
+            className="text-[0.6rem] font-bold uppercase tracking-wide text-[#2E86C1] hover:text-white transition ml-2 shrink-0"
+          >
+            {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
+          </button>
+        )}
+      </div>
+      <span
+        className="block font-mono bg-[#0d1117] text-slate-200 px-3 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
+        style={isCollapsible && isCollapsed ? {
+          maxHeight: '10lh',
+          overflow: 'hidden',
+          maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+        } : {}}
+      >
+        {displayValue}
+      </span>
+    </div>
+  )
 }
 
 export default function GraphPage() {
@@ -78,7 +125,6 @@ export default function GraphPage() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
 
-
   useEffect(() => {
     const handleResize = () => {
       setDimensions({
@@ -90,8 +136,6 @@ export default function GraphPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [])
-
-
 
   const graphData = useMemo(() => {
     if (!rawNodes) return { nodes: [], links: [] }
@@ -475,26 +519,7 @@ export default function GraphPage() {
                 🔒 Locked View
               </span>
             )}
-            {sticky.rows.map((r, i) => {
-              let displayValue = r.value
-              const tryParseJson = (str) => {
-                try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
-              }
-              const parsed = tryParseJson(r.value)
-              if (parsed !== undefined && typeof parsed === 'object' && parsed !== null) {
-                displayValue = JSON.stringify(parsed, null, 2)
-              }
-              return (
-                <div key={i}>
-                  <span className="block font-bold text-slate-500 text-[0.65rem] uppercase tracking-wider mb-1">
-                    {r.label}
-                  </span>
-                  <span className="block font-mono bg-[#0d1117] text-slate-200 px-3 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal">
-                    {displayValue}
-                  </span>
-                </div>
-              )
-            })}
+            {sticky.rows.map((r, i) => <DetailRow key={i} r={r} />)}
           </div>
         </div>
       )}

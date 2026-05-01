@@ -7,7 +7,7 @@ from typing import Any, Dict
 import arrow
 from pyspark.errors import AnalysisException
 from pyspark.sql import SparkSession
-from pyspark.sql.types import Row
+from pyspark.sql.types import ArrayType, StringType
 
 from constants import UI_NEWLINE, UI_SECTION_NEWLINE
 
@@ -98,7 +98,25 @@ def format_node_info(file_info: Dict[str, Any]) -> str:
 def get_metadata_row_slim_df_from_path(metadata_path: str):
     spark = SparkSession.builder.getOrCreate()
     df = spark.read.option("multiLine", True).json(metadata_path)
-    existing = set(df.columns)
+    df = df.withColumn("pointed_metadata_log_count", F.size(F.col("metadata-log")))
+
+    schema = df.schema
+    existing = set(schema.fieldNames())
+
+    if schema["snapshots"].dataType != ArrayType(StringType()):
+        existing.add("pointed_snapshots_files")
+        df = df.withColumn(
+            "pointed_snapshots_files",
+            F.transform(
+                F.col("snapshots"),
+                lambda s: F.create_map(
+                    F.lit("snapshot-id"),
+                    s.getField("snapshot-id").cast("string"),
+                    F.lit("manifest-list"),
+                    s.getField("manifest-list"),
+                ),
+            ),
+        )
 
     scalar_cols = [
         "current-schema-id",
@@ -111,8 +129,9 @@ def get_metadata_row_slim_df_from_path(metadata_path: str):
         "last-updated-ms",
         "location",
         "table-uuid",
+        "pointed_metadata_log_count",
     ]
-    json_cols = ["properties", "refs"]
+    json_cols = ["properties", "refs", "pointed_snapshots_files"]
 
     return df.select(
         *[F.col(column) for column in scalar_cols if column in existing],

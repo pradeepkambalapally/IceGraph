@@ -7,15 +7,6 @@ const COLOR_A = '#1964B9'
 const COLOR_B = '#6437D2'
 const COLOR_INIT = '#4a5568'
 
-const DIFF_KEYS = [
-  'current_schema_id',
-  'partition_spec_id',
-  'sort_order_id',
-  'table_format_version',
-  'refs',
-  'properties',
-]
-
 function parseDetails(details) {
   if (!details) return {}
   const sections = details.split(UI_SECTION_NEWLINE)
@@ -241,7 +232,7 @@ export default function TimelinePage() {
 
       const diff =
         type === 'B' && prev
-          ? DIFF_KEYS
+          ? Object.keys(details)
             .filter(k => details[k] !== prev[k])
             .map(k => ({ key: k, before: prev[k], after: details[k] }))
           : []

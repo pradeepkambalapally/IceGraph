@@ -170,7 +170,7 @@ export default function MetadataPage() {
             </div>
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-[#1a202c] text-slate-300 text-[0.7rem] p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
               <strong className="text-[#2E86C1] block mb-1 uppercase tracking-wide text-[0.65rem]">Partial Metadata</strong>
-              The following fields are stripped by the backend due to size:
+              The following fields are stripped/altered by the backend due to size:
               <ul className="mt-1.5 flex flex-col gap-0.5">
                 {['metadata-log', 'snapshot-log', 'snapshots', 'statistics'].map(f => (
                   <li key={f} className="font-mono text-[#2E86C1]">· {f}</li>

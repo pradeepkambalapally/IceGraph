@@ -377,6 +377,10 @@ class IcebergInventoryBuilder:
                     "sort_order_id": row["default-sort-order-id"],
                     "refs": json.dumps(refs),
                     "properties": row.properties if row.properties else "{}",
+                    "pointed_snapshots_files": getattr(
+                        row, "pointed_snapshots_files", None
+                    ),
+                    "pointed_metadata_log_count": row["pointed_metadata_log_count"],
                     "child_files": child_files,
                     "hidden_metadata": {
                         "color_append": 1 - index / (1.5 * n),
