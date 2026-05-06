@@ -104,7 +104,6 @@ services:
         condition: service_healthy
     environment:
       - SPARK_REMOTE=sc://spark-connect:15002
-      - TIMEZONE=UTC
 
 volumes:
   warehouse:
