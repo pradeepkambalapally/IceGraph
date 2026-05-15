@@ -12,9 +12,9 @@ from constants import (
     MAX_SNAPSHOTS_TO_COMPUTE,
 )
 from iceberg_inventory_builder.base_file import BaseFile
+from iceberg_inventory_builder.collector import Collector
 from iceberg_inventory_builder.files_collection import FilesCollection
 from icegraph_logger import logger
-from spark_connect import open_spark_connect_session
 from utils import timed
 
 max_snapshots_to_compute = int(
@@ -32,16 +32,15 @@ class SnapshotRecord(BaseFile):
     summary: str
 
 
-class CollectSnapshots:
+class CollectSnapshots(Collector):
     def __init__(
         self,
         full_table_name: str,
         start_snapshot_cutoff: Arrow,
         end_snapshot_cutoff: Arrow,
     ):
-        self._spark = open_spark_connect_session()
+        super().__init__(full_table_name)
 
-        self._table_name = full_table_name
         self._start_snapshot_cutoff = start_snapshot_cutoff
         self._end_snapshot_cutoff = end_snapshot_cutoff
 

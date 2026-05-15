@@ -1,5 +1,4 @@
 import inspect
-import json
 import os
 import threading
 import time
@@ -20,9 +19,9 @@ from pyspark.sql.window import Window
 from constants import (
     FileType,
     UI_NEWLINE,
-    MAIN_BRANCH_ICEBERG_TABLE_NAME,
     MAX_DATA_FILES_TO_COLLECT,
 )
+from iceberg_inventory_builder.collect_metadata import CollectMetadata
 from iceberg_inventory_builder.collect_snapshots import CollectSnapshots
 from iceberg_inventory_builder.find_search_cutoff import (
     find_search_cutoff,
@@ -31,8 +30,6 @@ from iceberg_inventory_builder.find_search_cutoff import (
 from icegraph_logger import logger
 from spark_connect import open_spark_connect_session
 from utils import (
-    get_metadata_row_slim_df_from_path,
-    get_json_metadata_from_path,
     format_partition,
     format_schemas_to_full_dict,
 )
@@ -88,16 +85,28 @@ class IcebergInventoryBuilder:
         self._errors.update(snapshot_collection.errors)
         self._warnings.update(snapshot_collection.warnings)
 
+        # Do make the metadata and the manifests+data_files collection perall!
+        metadata_collection = CollectMetadata(
+            self._table_name,
+            self._search_cutoff.start_metadata_cutoff,
+            self._search_cutoff.end_metadata_cutoff,
+            snapshot_collection.files,
+            self._snapshots_lock,
+        ).collect()
+        self._metadata_files = [asdict(f) for f in metadata_collection.files]
+        self._errors.update(metadata_collection.errors)
+        self._warnings.update(metadata_collection.warnings)
+
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
-            meta_future = executor.submit(
-                self._timed, "collect_metadata_files", self._collect_metadata_files
-            )
+            # meta_future = executor.submit(
+            #     self._timed, "collect_metadata_files", self._collect_metadata_files
+            # )
             manifests_future = executor.submit(
                 self._timed, "collect_manifests", self._collect_manifests
             )
             for name, future in [
-                ("collect_metadata_files", meta_future),
+                # ("collect_metadata_files", meta_future),
                 ("collect_manifests", manifests_future),
             ]:
                 try:
@@ -147,129 +156,6 @@ class IcebergInventoryBuilder:
             "warnings": {key: warn["message"] for key, warn in self._warnings.items()},
             "metadata_specs": metadata_specs,
         }
-
-    def _collect_metadata_files(self):
-        metadata_df = (
-            (
-                self._spark.sql(
-                    f"SELECT * FROM {self._table_name}.metadata_log_entries"
-                )
-                .withColumnRenamed("timestamp", "metadata_timestamp")
-                .select("file", "metadata_timestamp")
-            )
-            .filter(
-                F.col("metadata_timestamp")
-                >= F.lit(str(self._search_cutoff.start_metadata_cutoff))
-            )
-            .filter(
-                F.col("metadata_timestamp")
-                <= F.lit(str(self._search_cutoff.end_metadata_cutoff))
-            )
-        )
-
-        metadata_files = {
-            row.file: row.metadata_timestamp for row in metadata_df.collect()
-        }
-
-        metadata_files_df = None
-        for file, timestamp in metadata_files.items():
-            try:
-                df = (
-                    get_metadata_row_slim_df_from_path(file)
-                    .withColumn("metadata_timestamp", F.lit(timestamp))
-                    .withColumn("file", F.lit(file))
-                )
-                metadata_files_df = (
-                    df
-                    if metadata_files_df is None
-                    else metadata_files_df.unionByName(df, allowMissingColumns=True)
-                )
-            except Exception as e:
-                logger.error(
-                    f"[{self._table_name}] Metadata file read error for {file}",
-                    exc_info=True,
-                )
-                self._errors[file] = f"Metadata file read error: {e}"
-
-        if metadata_files_df is None:
-            return
-
-        rows = metadata_files_df.orderBy(F.desc("metadata_timestamp")).collect()
-        n = len(rows)
-        with self._snapshots_lock:
-            snap_id_to_path = {
-                s["snapshot_id"]: s["file_path"] for s in (self._snapshots or [])
-            }
-        self._metadata_files = []
-        for index, row in enumerate(rows):
-            is_main_metadata_file = index == 0
-            if is_main_metadata_file:
-                try:
-                    self._main_metadata_file = get_json_metadata_from_path(row.file)
-                    self._main_metadata_file["file"] = row.file
-                except Exception as e:
-                    logger.error(
-                        f"[{self._table_name}] Main metadata file read error for {row.file}",
-                        exc_info=True,
-                    )
-                    self._errors[row.file] = f"Main metadata file read error: {e}"
-
-            refs = json.loads(row.refs) if getattr(row, "refs", None) else {}
-
-            current_snap_path = snap_id_to_path.get(row["current-snapshot-id"])
-            child_files = [current_snap_path] if current_snap_path else []
-
-            branches = {
-                name: attrs["snapshot-id"]
-                for name, attrs in refs.items()
-                if attrs.get("type") == "branch"
-                and name != MAIN_BRANCH_ICEBERG_TABLE_NAME
-            }
-            snapshot_to_branches = defaultdict(list)
-            for branch_name, snap_id in branches.items():
-                snapshot_to_branches[snap_id].append(branch_name)
-
-            branch_files = {}
-            for snap_id, branch_names in snapshot_to_branches.items():
-                snap_path = snap_id_to_path.get(snap_id)
-                if snap_path:
-                    child_files.append(snap_path)
-                    branch_files[snap_path] = ", ".join(branch_names)
-
-            previous_file = rows[index + 1].file if index + 1 < n else None
-
-            self._metadata_files.append(
-                {
-                    "type": (
-                        FileType.MAIN_METADATA.value
-                        if is_main_metadata_file
-                        else FileType.METADATA.value
-                    ),
-                    "file_path": row.file,
-                    "timestamp": str(row.metadata_timestamp),
-                    "snapshot_id": row["current-snapshot-id"],
-                    "previous_file": previous_file,
-                    "last_sequence_number": (
-                        row["last-sequence-number"]
-                        if "last-sequence-number" in row
-                        else None
-                    ),
-                    "partition_spec_id": row["default-spec-id"],
-                    "current_schema_id": row["current-schema-id"],
-                    "sort_order_id": row["default-sort-order-id"],
-                    "refs": json.dumps(refs),
-                    "properties": row.properties if row.properties else "{}",
-                    "pointed_snapshots_files": getattr(
-                        row, "pointed_snapshots_files", None
-                    ),
-                    "pointed_metadata_log_count": row["pointed_metadata_log_count"],
-                    "child_files": child_files,
-                    "hidden_metadata": {
-                        "color_append": 1 - index / (1.5 * n),
-                        "branch_files": branch_files,
-                    },
-                }
-            )
 
     def _collect_manifests(self):
         if not self._snapshots:
