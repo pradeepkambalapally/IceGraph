@@ -25,13 +25,17 @@ def timed(fn):
 
         bound = signature.bind_partial(*args, **kwargs)
         table_name = bound.arguments.get("table_name")
+        if not table_name and (obj := bound.arguments.get("self")):
+            table_name = getattr(
+                obj,
+                "_table_name",
+                None,
+            ) or getattr(obj, "table_name", None)
 
         result = fn(*args, **kwargs)
 
         prefix = f"[{table_name}] " if table_name else ""
-        logger.info(
-            f"{prefix}{fn.__name__} took {time.time() - start:.2f}s"
-        )
+        logger.info(f"{prefix}{fn.__qualname__} took {time.time() - start:.2f}s")
 
         return result
 
@@ -104,13 +108,13 @@ def format_node_info(file_info: Dict[str, Any]) -> str:
 
     if file_info.get("existing_child_files") is not None:
         formatted_info += (
-                f"{UI_SECTION_NEWLINE}existing_child_files:"
-                + _format_list_for_ui(file_info["existing_child_files"])
+            f"{UI_SECTION_NEWLINE}existing_child_files:"
+            + _format_list_for_ui(file_info["existing_child_files"])
         )
     if file_info.get("deleted_child_files") is not None:
         formatted_info += (
-                f"{UI_SECTION_NEWLINE}deleted_child_files:"
-                + _format_list_for_ui(file_info["deleted_child_files"])
+            f"{UI_SECTION_NEWLINE}deleted_child_files:"
+            + _format_list_for_ui(file_info["deleted_child_files"])
         )
 
     if file_info.get("child_files") is not None:

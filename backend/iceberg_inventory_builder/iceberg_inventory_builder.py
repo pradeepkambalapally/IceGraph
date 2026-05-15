@@ -5,6 +5,7 @@ import threading
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 from typing import Optional, Dict, Any
 
 from pyspark.sql import functions as F
@@ -12,7 +13,7 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     LongType,
-    TimestampType,
+    StringType,
 )
 from pyspark.sql.window import Window
 
@@ -20,9 +21,9 @@ from constants import (
     FileType,
     UI_NEWLINE,
     MAIN_BRANCH_ICEBERG_TABLE_NAME,
-    MAX_SNAPSHOTS_TO_COMPUTE,
     MAX_DATA_FILES_TO_COLLECT,
 )
+from iceberg_inventory_builder.collect_snapshots import CollectSnapshots
 from iceberg_inventory_builder.find_search_cutoff import (
     find_search_cutoff,
     SearchCutoff,
@@ -34,10 +35,6 @@ from utils import (
     get_json_metadata_from_path,
     format_partition,
     format_schemas_to_full_dict,
-)
-
-max_snapshots_to_compute = int(
-    os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE)
 )
 
 max_data_files_to_collect = int(
@@ -66,7 +63,6 @@ class IcebergInventoryBuilder:
 
         self._metadata_files = None
         self._main_metadata_file = None
-        self._snapshot_rows = None
         self._snapshots = None
         self._manifests = None
         self._data_files = None
@@ -82,14 +78,15 @@ class IcebergInventoryBuilder:
             self._end_snapshot_id,
         )
 
-        try:
-            self._timed("collect_snapshots", self._collect_snapshots)
-        except Exception as e:
-            logger.error(
-                f"[{self._table_name}] collect_snapshots failed", exc_info=True
-            )
-            self._errors["collect_snapshots"] = str(e)
-            return self._build_result()
+        snapshot_collection = CollectSnapshots(
+            self._table_name,
+            self._search_cutoff.start_snapshot_cutoff,
+            self._search_cutoff.end_snapshot_cutoff,
+        ).collect()
+
+        self._snapshots = [asdict(f) for f in snapshot_collection.files]
+        self._errors.update(snapshot_collection.errors)
+        self._warnings.update(snapshot_collection.warnings)
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -274,54 +271,8 @@ class IcebergInventoryBuilder:
                 }
             )
 
-    def _collect_snapshots(self):
-        snapshots_df = (
-            self._spark.sql(
-                f"SELECT * FROM {self._table_name}.snapshots ORDER BY committed_at DESC"
-            )
-            .filter(
-                F.col("committed_at")
-                >= F.lit(str(self._search_cutoff.start_snapshot_cutoff))
-            )
-            .filter(
-                F.col("committed_at")
-                <= F.lit(str(self._search_cutoff.end_snapshot_cutoff))
-            )
-        )
-
-        if snapshots_df.count() > max_snapshots_to_compute:
-            raise ValueError(
-                f"Too many snapshots to compute. Maximum is {max_snapshots_to_compute}."
-            )
-
-        self._snapshot_rows = snapshots_df.collect()
-
-        self._snapshots = []
-        for snapshot in self._snapshot_rows:
-            summary = snapshot.summary or {}
-            summary_repr = UI_NEWLINE.join(
-                (
-                    f"{k}: {(int(v) / (1024 ** 3)):.5f} GB"
-                    if k.endswith("files-size")
-                    else f"{k}: {v}"
-                )
-                for k, v in summary.items()
-            )
-            self._snapshots.append(
-                {
-                    "type": FileType.SNAPSHOT.value,
-                    "file_path": snapshot.manifest_list,
-                    "timestamp": str(snapshot.committed_at),
-                    "snapshot_id": snapshot.snapshot_id,
-                    "parent_id": snapshot.parent_id,
-                    "operation": snapshot.operation,
-                    "summary": summary_repr,
-                    "child_files": [],  # filled in _collect_manifests
-                }
-            )
-
     def _collect_manifests(self):
-        if not self._snapshot_rows:
+        if not self._snapshots:
             self._manifests = []
             self._data_files = []
             return
@@ -372,26 +323,23 @@ class IcebergInventoryBuilder:
         ]
 
     def _union_snapshot_manifests_df(self):
-        if not self._snapshot_rows:
-            return None
-
         snapshot_schema = StructType(
             [
                 StructField("lookup_snap_id", LongType(), False),
-                StructField("snapshot_timestamp", TimestampType(), True),
+                StructField("snapshot_timestamp", StringType(), True),
             ]
         )
         snapshot_to_timestamp = [
-            (s.snapshot_id, s.committed_at) for s in self._snapshot_rows
+            (s["snapshot_id"], s["timestamp"]) for s in self._snapshots
         ]
         snapshot_to_timestamp_df = self._spark.createDataFrame(
             snapshot_to_timestamp, snapshot_schema
         )
 
         result = None
-        for snapshot in self._snapshot_rows:
-            snap_id = snapshot.snapshot_id
-            manifest_list_path = snapshot.manifest_list
+        for snapshot in self._snapshots:
+            snap_id = snapshot["snapshot_id"]
+            manifest_list_path = snapshot["file_path"]
 
             df = (
                 self._spark.read.format("avro")
