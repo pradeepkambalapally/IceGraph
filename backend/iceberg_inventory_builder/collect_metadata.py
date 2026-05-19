@@ -1,5 +1,4 @@
 import json
-import threading
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Optional, List, Dict
@@ -47,10 +46,8 @@ class CollectMetadata(Collector):
         start_metadata_cutoff: Arrow,
         end_metadata_cutoff: Arrow,
         snapshots: List[SnapshotRecord],
-        snapshots_lock: threading.Lock,
     ):
         super().__init__(full_table_name)
-        self._snapshots_lock = snapshots_lock
         self._snapshots = snapshots
 
         self._start_metadata_cutoff = start_metadata_cutoff
@@ -126,8 +123,7 @@ class CollectMetadata(Collector):
         return metadata_files_df
 
     def _get_snap_id_to_path(self) -> Dict[int, str]:
-        with self._snapshots_lock:
-            return {s.snapshot_id: s.file_path for s in (self._snapshots or [])}
+        return {s.snapshot_id: s.file_path for s in (self._snapshots or [])}
 
     def _load_main_metadata_file(self, row: dict) -> None:
         file = row["file"]

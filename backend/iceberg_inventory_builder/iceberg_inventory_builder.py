@@ -1,3 +1,6 @@
+from iceberg_inventory_builder.manifests_appearences_extractor import (
+    ManifestAppearencesExtractor,
+)
 import inspect
 import os
 import threading
@@ -91,11 +94,16 @@ class IcebergInventoryBuilder:
             self._search_cutoff.start_metadata_cutoff,
             self._search_cutoff.end_metadata_cutoff,
             snapshot_collection.files,
-            self._snapshots_lock,
         ).collect()
         self._metadata_files = [asdict(f) for f in metadata_collection.files]
         self._errors.update(metadata_collection.errors)
         self._warnings.update(metadata_collection.warnings)
+
+        self._internal_manifest_appearences_df = ManifestAppearencesExtractor(
+            self._table_name,
+            snapshot_collection.files,
+            self._search_cutoff.manifests_to_ignore_df,
+        ).extract_dataframe()
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -158,28 +166,7 @@ class IcebergInventoryBuilder:
         }
 
     def _collect_manifests(self):
-        if not self._snapshots:
-            self._manifests = []
-            self._data_files = []
-            return
-
-        all_manifests_df = self._union_snapshot_manifests_df()
-        if all_manifests_df is None:
-            self._manifests = []
-            self._data_files = []
-            return
-
-        manifest_rows = self._timed(
-            "collect_manifest_rows",
-            lambda: all_manifests_df.join(
-                self._search_cutoff.manifests_to_ignore_df, on="path", how="left_anti"
-            ).collect(),
-        )
-        if not manifest_rows:
-            self._manifests = []
-            self._data_files = []
-            return
-
+        manifest_rows = self._internal_manifest_appearences_df.collect()
         self._fill_snapshot_child_files(manifest_rows)
 
         seen_paths = set()
@@ -208,62 +195,13 @@ class IcebergInventoryBuilder:
             self._process_data_file(entry) for entry in sorted_data_files
         ]
 
-    def _union_snapshot_manifests_df(self):
-        snapshot_schema = StructType(
-            [
-                StructField("lookup_snap_id", LongType(), False),
-                StructField("snapshot_timestamp", StringType(), True),
-            ]
-        )
-        snapshot_to_timestamp = [
-            (s["snapshot_id"], s["timestamp"]) for s in self._snapshots
-        ]
-        snapshot_to_timestamp_df = self._spark.createDataFrame(
-            snapshot_to_timestamp, snapshot_schema
-        )
-
-        result = None
-        for snapshot in self._snapshots:
-            snap_id = snapshot["snapshot_id"]
-            manifest_list_path = snapshot["file_path"]
-
-            df = (
-                self._spark.read.format("avro")
-                .load(manifest_list_path)
-                .select(
-                    F.col("manifest_path").alias("path"),
-                    F.col("added_snapshot_id"),
-                    F.lit(snap_id).alias("_snap_id"),
-                )
-            )
-
-            result = (
-                df
-                if result is None
-                else result.unionByName(df, allowMissingColumns=True)
-            )
-
-        if result is None:
-            return None
-
-        return result.join(
-            snapshot_to_timestamp_df,
-            F.col("added_snapshot_id") == F.col("lookup_snap_id"),
-            "left",
-        ).select(
-            F.col("path"),
-            F.col("added_snapshot_id"),
-            F.col("snapshot_timestamp").alias("added_snapshot_timestamp"),
-            F.col("_snap_id"),
-        )
-
     def _fill_snapshot_child_files(self, manifest_rows):
         snap_id_to_paths = defaultdict(list)
         seen_per_snap = defaultdict(set)
         for m in manifest_rows:
-            if m.path not in seen_per_snap[m._snap_id]:
-                snap_id_to_paths[m._snap_id].append(m.path)
-                seen_per_snap[m._snap_id].add(m.path)
+            if m.path not in seen_per_snap[m.snapshot_id]:
+                snap_id_to_paths[m.snapshot_id].append(m.path)
+                seen_per_snap[m.snapshot_id].add(m.path)
 
         with self._snapshots_lock:
             snap_id_to_snapshot = {s["snapshot_id"]: s for s in self._snapshots}
