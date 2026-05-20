@@ -87,15 +87,9 @@ def _get_start_cutoffs(
         WHERE latest_snapshot_id = {start_snapshot_id}
     """).first()
 
-    metadata_cutoff = (
-        to_arrow_tz(meta_row.ts, spark_tz)
-        if meta_row and meta_row.ts
-        else snapshot_cutoff
-    )
+    metadata_cutoff = to_arrow_tz(meta_row.ts, spark_tz) if meta_row and meta_row.ts else snapshot_cutoff
 
-    manifests_to_ignore_df = _get_manifests_to_ignore_df(
-        spark, table_name, row.parent_id
-    )
+    manifests_to_ignore_df = _get_manifests_to_ignore_df(spark, table_name, row.parent_id)
 
     return StartCutoffs(
         snapshot_cutoff=snapshot_cutoff,
@@ -130,11 +124,7 @@ def _get_end_cutoffs(
         WHERE latest_snapshot_id = {end_snapshot_id}
     """).first()
 
-    metadata_cutoff = (
-        to_arrow_tz(meta_row.ts, spark_tz)
-        if meta_row and meta_row.ts
-        else snapshot_cutoff
-    )
+    metadata_cutoff = to_arrow_tz(meta_row.ts, spark_tz) if meta_row and meta_row.ts else snapshot_cutoff
 
     return EndCutoffs(
         snapshot_cutoff=snapshot_cutoff,
@@ -157,11 +147,7 @@ def _get_manifests_to_ignore_df(
             WHERE snapshot_id = {parent_id}
         """).first()["manifest_list"]
 
-        return (
-            spark.read.format("avro")
-            .load(parent_manifest_list)
-            .select(F.col("manifest_path").alias("path"))
-        )
+        return spark.read.format("avro").load(parent_manifest_list).select(F.col("manifest_path").alias("path"))
 
     except:
         logger.warning(

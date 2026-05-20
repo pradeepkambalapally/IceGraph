@@ -68,9 +68,7 @@ def format_partition(partition_dict: dict) -> str:
     for key, value in partition_dict.items():
         if key.endswith("_hour") and isinstance(value, int):
             with suppress(Exception):
-                repr_value = arrow.Arrow.utcfromtimestamp(value * 3600).format(
-                    "YYYY-MM-DD HH"
-                )
+                repr_value = arrow.Arrow.utcfromtimestamp(value * 3600).format("YYYY-MM-DD HH")
                 value = f"{repr_value} ({value})"
 
         partitions_repr.append(f"{key} = {value}")
@@ -107,20 +105,12 @@ def format_node_info(file_info: Dict[str, Any]) -> str:
     )
 
     if file_info.get("existing_child_files") is not None:
-        formatted_info += (
-            f"{UI_SECTION_NEWLINE}existing_child_files:"
-            + _format_list_for_ui(file_info["existing_child_files"])
-        )
+        formatted_info += f"{UI_SECTION_NEWLINE}existing_child_files:" + _format_list_for_ui(file_info["existing_child_files"])
     if file_info.get("deleted_child_files") is not None:
-        formatted_info += (
-            f"{UI_SECTION_NEWLINE}deleted_child_files:"
-            + _format_list_for_ui(file_info["deleted_child_files"])
-        )
+        formatted_info += f"{UI_SECTION_NEWLINE}deleted_child_files:" + _format_list_for_ui(file_info["deleted_child_files"])
 
     if file_info.get("child_files") is not None:
-        formatted_info += f"{UI_SECTION_NEWLINE}child_files:" + _format_list_for_ui(
-            file_info["child_files"]
-        )
+        formatted_info += f"{UI_SECTION_NEWLINE}child_files:" + _format_list_for_ui(file_info["child_files"])
 
     return formatted_info
 
@@ -165,11 +155,7 @@ def get_metadata_row_slim_df_from_path(metadata_path: str):
 
     return df.select(
         *[F.col(column) for column in scalar_cols if column in existing],
-        *[
-            F.to_json(F.col(column)).alias(column)
-            for column in json_cols
-            if column in existing
-        ],
+        *[F.to_json(F.col(column)).alias(column) for column in json_cols if column in existing],
     )
 
 

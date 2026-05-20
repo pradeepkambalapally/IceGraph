@@ -15,3 +15,5 @@ dependencies = [
     "pyspark[connect]==3.5.4",
     "python-dotenv==1.2.1",
 ]
+[tool.black]
+line-length = 150

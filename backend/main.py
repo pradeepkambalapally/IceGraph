@@ -26,12 +26,8 @@ app = Flask(__name__, static_url_path="/static")
 job_lock = threading.Lock()
 jobs: dict[str, dict] = {}
 
-max_number_of_graphs_to_compute = int(
-    os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE", MAX_NUMBER_OF_GRAPHS_TO_COMPUTE)
-)
-compute_cleanup_time_seconds = int(
-    os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS)
-)
+max_number_of_graphs_to_compute = int(os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE", MAX_NUMBER_OF_GRAPHS_TO_COMPUTE))
+compute_cleanup_time_seconds = int(os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS))
 max_snapshots_to_show = int(os.getenv("MAX_SNAPSHOTS_TO_SHOW", MAX_SNAPSHOTS_TO_SHOW))
 
 executor_pool = ThreadPoolExecutor(max_workers=max_number_of_graphs_to_compute)
@@ -66,9 +62,7 @@ def _schedule_cleanup(job_id, is_in_lock_block=False):
 
 def _compute_graph_background(job_id, table_name, start_snapshot_id, end_snapshot_id):
     try:
-        table_data = IcebergInventoryBuilder(
-            table_name, start_snapshot_id, end_snapshot_id
-        ).collect()
+        table_data = IcebergInventoryBuilder(table_name, start_snapshot_id, end_snapshot_id).collect()
 
         result = normalize_graph_data(table_data)
 

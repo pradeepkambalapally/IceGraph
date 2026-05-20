@@ -33,13 +33,9 @@ from utils import (
     format_schemas_to_full_dict,
 )
 
-max_snapshots_to_compute = int(
-    os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE)
-)
+max_snapshots_to_compute = int(os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE))
 
-max_data_files_to_collect = int(
-    os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT)
-)
+max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))
 
 
 class IcebergInventoryBuilder:
@@ -78,29 +74,21 @@ class IcebergInventoryBuilder:
         try:
             self._timed("find_search_cutoff", self._find_search_cutoff)
         except Exception as e:
-            logger.error(
-                f"[{self._table_name}] find_search_cutoff failed", exc_info=True
-            )
+            logger.error(f"[{self._table_name}] find_search_cutoff failed", exc_info=True)
             self._errors["find_search_cutoff"] = str(e)
             self._set_full_history_cutoff()
 
         try:
             self._timed("collect_snapshots", self._collect_snapshots)
         except Exception as e:
-            logger.error(
-                f"[{self._table_name}] collect_snapshots failed", exc_info=True
-            )
+            logger.error(f"[{self._table_name}] collect_snapshots failed", exc_info=True)
             self._errors["collect_snapshots"] = str(e)
             return self._build_result()
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
-            meta_future = executor.submit(
-                self._timed, "collect_metadata_files", self._collect_metadata_files
-            )
-            manifests_future = executor.submit(
-                self._timed, "collect_manifests", self._collect_manifests
-            )
+            meta_future = executor.submit(self._timed, "collect_metadata_files", self._collect_metadata_files)
+            manifests_future = executor.submit(self._timed, "collect_manifests", self._collect_manifests)
             for name, future in [
                 ("collect_metadata_files", meta_future),
                 ("collect_manifests", manifests_future),
@@ -111,9 +99,7 @@ class IcebergInventoryBuilder:
                     logger.error(f"[{self._table_name}] {name} failed", exc_info=True)
                     self._errors[name] = str(e)
 
-        logger.info(
-            f"[{self._table_name}] total collect took {time.time() - total_start:.2f}s"
-        )
+        logger.info(f"[{self._table_name}] total collect took {time.time() - total_start:.2f}s")
         return self._build_result()
 
     def _timed(self, name: str, fn):
@@ -123,20 +109,13 @@ class IcebergInventoryBuilder:
         return result
 
     def _build_result(self) -> Dict[str, Any]:
-        inventory = (
-            (self._metadata_files or [])
-            + (self._snapshots or [])
-            + (self._manifests or [])
-            + (self._data_files or [])
-        )
+        inventory = (self._metadata_files or []) + (self._snapshots or []) + (self._manifests or []) + (self._data_files or [])
 
         metadata_specs = {"table-name": self._table_name}
         if self._main_metadata_file:
             main_meta_path = self._main_metadata_file["file"]
             try:
-                self._main_metadata_file["schemas"] = format_schemas_to_full_dict(
-                    self._main_metadata_file.get("schemas", [])
-                )
+                self._main_metadata_file["schemas"] = format_schemas_to_full_dict(self._main_metadata_file.get("schemas", []))
                 self._main_metadata_file["table-name"] = self._table_name
                 metadata_specs = self._main_metadata_file
             except Exception as e:
@@ -194,11 +173,7 @@ class IcebergInventoryBuilder:
             WHERE latest_snapshot_id = {self._start_snapshot_id}
         """).first()
 
-        self._start_metadata_cutoff = (
-            to_arrow_tz(meta_row.ts, self._spark_tz)
-            if meta_row and meta_row.ts
-            else self._start_snapshot_cutoff
-        )
+        self._start_metadata_cutoff = to_arrow_tz(meta_row.ts, self._spark_tz) if meta_row and meta_row.ts else self._start_snapshot_cutoff
 
         parent_id = row.parent_id
 
@@ -212,11 +187,7 @@ class IcebergInventoryBuilder:
                     WHERE snapshot_id = {parent_id}
                     """).first()["manifest_list"]
 
-                self._manifests_to_ignore_df = (
-                    self._spark.read.format("avro")
-                    .load(parent_manifest_list)
-                    .select(F.col("manifest_path").alias("path"))
-                )
+                self._manifests_to_ignore_df = self._spark.read.format("avro").load(parent_manifest_list).select(F.col("manifest_path").alias("path"))
 
             except Exception as e:
                 logger.warning(
@@ -224,9 +195,7 @@ class IcebergInventoryBuilder:
                     exc_info=True,
                 )
 
-                self._manifests_to_ignore_df = (
-                    self._create_empty_manifests_to_ignore_df()
-                )
+                self._manifests_to_ignore_df = self._create_empty_manifests_to_ignore_df()
 
     def _set_end_cutoffs(self):
         row = self._spark.sql(f"""
@@ -248,16 +217,10 @@ class IcebergInventoryBuilder:
             WHERE latest_snapshot_id = {self._end_snapshot_id}
         """).first()
 
-        self._end_metadata_cutoff = (
-            to_arrow_tz(meta_row.ts, self._spark_tz)
-            if meta_row and meta_row.ts
-            else self._end_snapshot_cutoff
-        )
+        self._end_metadata_cutoff = to_arrow_tz(meta_row.ts, self._spark_tz) if meta_row and meta_row.ts else self._end_snapshot_cutoff
 
     def _create_empty_manifests_to_ignore_df(self):
-        return self._spark.createDataFrame(
-            [], StructType([StructField("path", StringType())])
-        )
+        return self._spark.createDataFrame([], StructType([StructField("path", StringType())]))
 
     def _set_full_history_cutoff(self):
         self._start_snapshot_cutoff = arrow.Arrow.min
@@ -266,9 +229,7 @@ class IcebergInventoryBuilder:
         self._start_metadata_cutoff = arrow.Arrow.min
         self._end_metadata_cutoff = arrow.Arrow.max
 
-        self._manifests_to_ignore_df = self._spark.createDataFrame(
-            [], StructType([StructField("path", StringType())])
-        )
+        self._manifests_to_ignore_df = self._spark.createDataFrame([], StructType([StructField("path", StringType())]))
 
     def _collect_metadata_files(self):
         metadata_df = (
@@ -277,31 +238,17 @@ class IcebergInventoryBuilder:
             .select("file", "metadata_timestamp")
         )
         if self._start_metadata_cutoff:
-            metadata_df = metadata_df.filter(
-                F.col("metadata_timestamp") >= F.lit(str(self._start_metadata_cutoff))
-            )
+            metadata_df = metadata_df.filter(F.col("metadata_timestamp") >= F.lit(str(self._start_metadata_cutoff)))
         if self._end_metadata_cutoff:
-            metadata_df = metadata_df.filter(
-                F.col("metadata_timestamp") <= F.lit(str(self._end_metadata_cutoff))
-            )
+            metadata_df = metadata_df.filter(F.col("metadata_timestamp") <= F.lit(str(self._end_metadata_cutoff)))
 
-        metadata_files = {
-            row.file: row.metadata_timestamp for row in metadata_df.collect()
-        }
+        metadata_files = {row.file: row.metadata_timestamp for row in metadata_df.collect()}
 
         metadata_files_df = None
         for file, timestamp in metadata_files.items():
             try:
-                df = (
-                    get_metadata_row_slim_df_from_path(file)
-                    .withColumn("metadata_timestamp", F.lit(timestamp))
-                    .withColumn("file", F.lit(file))
-                )
-                metadata_files_df = (
-                    df
-                    if metadata_files_df is None
-                    else metadata_files_df.unionByName(df, allowMissingColumns=True)
-                )
+                df = get_metadata_row_slim_df_from_path(file).withColumn("metadata_timestamp", F.lit(timestamp)).withColumn("file", F.lit(file))
+                metadata_files_df = df if metadata_files_df is None else metadata_files_df.unionByName(df, allowMissingColumns=True)
             except Exception as e:
                 logger.error(
                     f"[{self._table_name}] Metadata file read error for {file}",
@@ -315,9 +262,7 @@ class IcebergInventoryBuilder:
         rows = metadata_files_df.orderBy(F.desc("metadata_timestamp")).collect()
         n = len(rows)
         with self._snapshots_lock:
-            snap_id_to_path = {
-                s["snapshot_id"]: s["file_path"] for s in (self._snapshots or [])
-            }
+            snap_id_to_path = {s["snapshot_id"]: s["file_path"] for s in (self._snapshots or [])}
         self._metadata_files = []
         for index, row in enumerate(rows):
             is_main_metadata_file = index == 0
@@ -338,10 +283,7 @@ class IcebergInventoryBuilder:
             child_files = [current_snap_path] if current_snap_path else []
 
             branches = {
-                name: attrs["snapshot-id"]
-                for name, attrs in refs.items()
-                if attrs.get("type") == "branch"
-                and name != MAIN_BRANCH_ICEBERG_TABLE_NAME
+                name: attrs["snapshot-id"] for name, attrs in refs.items() if attrs.get("type") == "branch" and name != MAIN_BRANCH_ICEBERG_TABLE_NAME
             }
             snapshot_to_branches = defaultdict(list)
             for branch_name, snap_id in branches.items():
@@ -358,28 +300,18 @@ class IcebergInventoryBuilder:
 
             self._metadata_files.append(
                 {
-                    "type": (
-                        FileType.MAIN_METADATA.value
-                        if is_main_metadata_file
-                        else FileType.METADATA.value
-                    ),
+                    "type": (FileType.MAIN_METADATA.value if is_main_metadata_file else FileType.METADATA.value),
                     "file_path": row.file,
                     "timestamp": str(row.metadata_timestamp),
                     "snapshot_id": row["current-snapshot-id"],
                     "previous_file": previous_file,
-                    "last_sequence_number": (
-                        row["last-sequence-number"]
-                        if "last-sequence-number" in row
-                        else None
-                    ),
+                    "last_sequence_number": (row["last-sequence-number"] if "last-sequence-number" in row else None),
                     "partition_spec_id": row["default-spec-id"],
                     "current_schema_id": row["current-schema-id"],
                     "sort_order_id": row["default-sort-order-id"],
                     "refs": json.dumps(refs),
                     "properties": row.properties if row.properties else "{}",
-                    "pointed_snapshots_files": getattr(
-                        row, "pointed_snapshots_files", None
-                    ),
+                    "pointed_snapshots_files": getattr(row, "pointed_snapshots_files", None),
                     "pointed_metadata_log_count": row["pointed_metadata_log_count"],
                     "child_files": child_files,
                     "hidden_metadata": {
@@ -390,22 +322,14 @@ class IcebergInventoryBuilder:
             )
 
     def _collect_snapshots(self):
-        snapshots_df = self._spark.sql(
-            f"SELECT * FROM {self._table_name}.snapshots ORDER BY committed_at DESC"
-        )
+        snapshots_df = self._spark.sql(f"SELECT * FROM {self._table_name}.snapshots ORDER BY committed_at DESC")
         if self._start_snapshot_cutoff:
-            snapshots_df = snapshots_df.filter(
-                F.col("committed_at") >= F.lit(str(self._start_snapshot_cutoff))
-            )
+            snapshots_df = snapshots_df.filter(F.col("committed_at") >= F.lit(str(self._start_snapshot_cutoff)))
         if self._end_snapshot_cutoff:
-            snapshots_df = snapshots_df.filter(
-                F.col("committed_at") <= F.lit(str(self._end_snapshot_cutoff))
-            )
+            snapshots_df = snapshots_df.filter(F.col("committed_at") <= F.lit(str(self._end_snapshot_cutoff)))
 
         if snapshots_df.count() > max_snapshots_to_compute:
-            raise ValueError(
-                f"Too many snapshots to compute. Maximum is {max_snapshots_to_compute}."
-            )
+            raise ValueError(f"Too many snapshots to compute. Maximum is {max_snapshots_to_compute}.")
 
         self._snapshot_rows = snapshots_df.collect()
 
@@ -413,12 +337,7 @@ class IcebergInventoryBuilder:
         for snapshot in self._snapshot_rows:
             summary = snapshot.summary or {}
             summary_repr = UI_NEWLINE.join(
-                (
-                    f"{k}: {(int(v) / (1024**3)):.5f} GB"
-                    if k.endswith("files-size")
-                    else f"{k}: {v}"
-                )
-                for k, v in summary.items()
+                (f"{k}: {(int(v) / (1024**3)):.5f} GB" if k.endswith("files-size") else f"{k}: {v}") for k, v in summary.items()
             )
             self._snapshots.append(
                 {
@@ -447,9 +366,7 @@ class IcebergInventoryBuilder:
 
         manifest_rows = self._timed(
             "collect_manifest_rows",
-            lambda: all_manifests_df.join(
-                self._manifests_to_ignore_df, on="path", how="left_anti"
-            ).collect(),
+            lambda: all_manifests_df.join(self._manifests_to_ignore_df, on="path", how="left_anti").collect(),
         )
         if not manifest_rows:
             self._manifests = []
@@ -475,14 +392,10 @@ class IcebergInventoryBuilder:
             "collect_data_files",
             lambda: self._collect_data_files(deduped_manifest_rows),
         )
-        sorted_data_files = sorted(
-            data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True
-        )
+        sorted_data_files = sorted(data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True)
 
         self._collect_all_relevant_manifests(deduped_manifest_rows, sorted_data_files)
-        self._data_files = [
-            self._process_data_file(entry) for entry in sorted_data_files
-        ]
+        self._data_files = [self._process_data_file(entry) for entry in sorted_data_files]
 
     def _union_snapshot_manifests_df(self):
         if not self._snapshot_rows:
@@ -494,12 +407,8 @@ class IcebergInventoryBuilder:
                 StructField("snapshot_timestamp", TimestampType(), True),
             ]
         )
-        snapshot_to_timestamp = [
-            (s.snapshot_id, s.committed_at) for s in self._snapshot_rows
-        ]
-        snapshot_to_timestamp_df = self._spark.createDataFrame(
-            snapshot_to_timestamp, snapshot_schema
-        )
+        snapshot_to_timestamp = [(s.snapshot_id, s.committed_at) for s in self._snapshot_rows]
+        snapshot_to_timestamp_df = self._spark.createDataFrame(snapshot_to_timestamp, snapshot_schema)
 
         result = None
         for snapshot in self._snapshot_rows:
@@ -516,11 +425,7 @@ class IcebergInventoryBuilder:
                 )
             )
 
-            result = (
-                df
-                if result is None
-                else result.unionByName(df, allowMissingColumns=True)
-            )
+            result = df if result is None else result.unionByName(df, allowMissingColumns=True)
 
         if result is None:
             return None
@@ -556,9 +461,7 @@ class IcebergInventoryBuilder:
         if avro_df is None:
             return []
 
-        window = Window.partitionBy("data_file.file_path").orderBy(
-            F.desc("_added_snapshot_timestamp")
-        )
+        window = Window.partitionBy("data_file.file_path").orderBy(F.desc("_added_snapshot_timestamp"))
         avro_df = avro_df.withColumn("_row_num", F.row_number().over(window))
 
         earliest_df = avro_df.filter(F.col("_row_num") == 1).select(
@@ -603,19 +506,11 @@ class IcebergInventoryBuilder:
         grouped_files_limited_df = grouped_files_df.limit(max_data_files_to_collect + 1)
 
         global_window = Window.orderBy(F.desc("_added_snapshot_timestamp"))
-        grouped_files_limited_df = grouped_files_limited_df.withColumn(
-            "_row_num", F.row_number().over(global_window)
-        )
+        grouped_files_limited_df = grouped_files_limited_df.withColumn("_row_num", F.row_number().over(global_window))
 
         cutoff_timestamp = (
-            grouped_files_limited_df.filter(
-                F.col("_row_num") == max_data_files_to_collect + 1
-            )
-            .agg(
-                F.coalesce(
-                    F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")
-                ).alias("_cutoff")
-            )
+            grouped_files_limited_df.filter(F.col("_row_num") == max_data_files_to_collect + 1)
+            .agg(F.coalesce(F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")).alias("_cutoff"))
             .select("_cutoff")
         )
 
@@ -642,11 +537,7 @@ class IcebergInventoryBuilder:
                     )
                     .withColumn("_add_snapshot_id", F.lit(m_row.added_snapshot_id))
                 )
-                avro_df = (
-                    df
-                    if avro_df is None
-                    else avro_df.unionByName(df, allowMissingColumns=True)
-                )
+                avro_df = df if avro_df is None else avro_df.unionByName(df, allowMissingColumns=True)
             except Exception as e:
                 logger.error(
                     f"[{self._table_name}] Avro read error for {m_row.path}",
@@ -683,8 +574,7 @@ class IcebergInventoryBuilder:
 
         if len(entries) == 0 and (
             self._warnings.get("data_files_limit_exceeded") is None
-            or self._warnings["data_files_limit_exceeded"]["timestamp"]
-            < m_row.added_snapshot_timestamp
+            or self._warnings["data_files_limit_exceeded"]["timestamp"] < m_row.added_snapshot_timestamp
         ):
 
             self._warnings["data_files_limit_exceeded"] = {
@@ -723,8 +613,7 @@ class IcebergInventoryBuilder:
                 "total_rows_in_downstream_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],
                 "deleted_child_files": child_data_paths_status["deleted"],
-                "child_files": child_data_paths_status["existing"]
-                + child_data_paths_status["deleted"],
+                "child_files": child_data_paths_status["existing"] + child_data_paths_status["deleted"],
             }
         )
 

@@ -1,3 +1,4 @@
+from iceberg_inventory_builder.extractor import ExtractionResult
 from iceberg_inventory_builder.collect_snapshots import SnapshotRecord
 import pyspark
 from pyspark.sql import functions as F
@@ -36,24 +37,20 @@ class ManifestAppearencesExtractor(Extractor):
         super().__init__(table_name)
         self._snapshots = snapshots
         self._manifests_to_ignore_df = manifests_to_ignore_df
+        self._errors = {}
 
-    def extract_dataframe(self) -> pyspark.sql.DataFrame:
+    def extract_dataframe(self) -> ExtractionResult:
         manifests_df = self._union_manifests_for_snapshots()
-        manifests_with_timestamps_df = self._enreatch_manifests_with_timestamps(
-            manifests_df
+        manifests_with_timestamps_df = self._enreatch_manifests_with_timestamps(manifests_df)
+
+        valid_manifests_df = manifests_with_timestamps_df.join(self._manifests_to_ignore_df, on="path", how="left_anti")
+
+        return ExtractionResult(
+            valid_manifests_df.select("path", "added_snapshot_id", "added_snapshot_timestamp", "snapshot_id"),
+            self._errors,
         )
 
-        valid_manifests_df = manifests_with_timestamps_df.join(
-            self._manifests_to_ignore_df, on="path", how="left_anti"
-        )
-
-        return valid_manifests_df.select(
-            "path", "added_snapshot_id", "added_snapshot_timestamp", "snapshot_id"
-        )
-
-    def _read_manifests_for_snapshot(
-        self, manifest_list_path: str, snap_id: str
-    ) -> pyspark.sql.DataFrame:
+    def _read_manifests_for_snapshot(self, manifest_list_path: str, snap_id: str) -> pyspark.sql.DataFrame:
         return (
             self._spark.read.format("avro")
             .load(manifest_list_path)
@@ -69,12 +66,15 @@ class ManifestAppearencesExtractor(Extractor):
         for snapshot in self._snapshots:
             snap_id = snapshot.snapshot_id
             manifest_list_path = snapshot.file_path
-            df = self._read_manifests_for_snapshot(manifest_list_path, snap_id)
+            try:
+                df = self._read_manifests_for_snapshot(manifest_list_path, snap_id)
+                if result is None:
+                    result = df
+                else:
+                    result = result.unionByName(df, allowMissingColumns=True)
 
-            if result is None:
-                result = df
-            else:
-                result = result.unionByName(df, allowMissingColumns=True)
+            except Exception as e:
+                self._errors[manifest_list_path] = f"Failed to read/union manifest list: {e}"
 
         if result is None:
             result = self._spark.createDataFrame([], MANIFEST_BASE_SCHEMA)
@@ -87,9 +87,7 @@ class ManifestAppearencesExtractor(Extractor):
             SNAPSHOT_TO_TIMESTAMP_SCHEMA,
         )
 
-    def _enreatch_manifests_with_timestamps(
-        self, manifests_df: pyspark.sql.DataFrame
-    ) -> pyspark.sql.DataFrame:
+    def _enreatch_manifests_with_timestamps(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
         return manifests_df.join(
             self._snapshot_to_timestamp_df(),
             F.col("added_snapshot_id") == F.col("lookup_snap_id"),

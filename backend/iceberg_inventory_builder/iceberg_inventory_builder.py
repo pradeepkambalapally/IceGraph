@@ -37,9 +37,7 @@ from utils import (
     format_schemas_to_full_dict,
 )
 
-max_data_files_to_collect = int(
-    os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT)
-)
+max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))
 
 
 class IcebergInventoryBuilder:
@@ -99,20 +97,21 @@ class IcebergInventoryBuilder:
         self._errors.update(metadata_collection.errors)
         self._warnings.update(metadata_collection.warnings)
 
-        self._internal_manifest_appearences_df = ManifestAppearencesExtractor(
+        manifest_appearences_result = ManifestAppearencesExtractor(
             self._table_name,
             snapshot_collection.files,
             self._search_cutoff.manifests_to_ignore_df,
         ).extract_dataframe()
+
+        self._internal_manifest_appearences_df = manifest_appearences_result.dataframe
+        self._errors.update(manifest_appearences_result.errors)
 
         # metadata files and manifests are independent once snapshots are ready — run in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
             # meta_future = executor.submit(
             #     self._timed, "collect_metadata_files", self._collect_metadata_files
             # )
-            manifests_future = executor.submit(
-                self._timed, "collect_manifests", self._collect_manifests
-            )
+            manifests_future = executor.submit(self._timed, "collect_manifests", self._collect_manifests)
             for name, future in [
                 # ("collect_metadata_files", meta_future),
                 ("collect_manifests", manifests_future),
@@ -123,9 +122,7 @@ class IcebergInventoryBuilder:
                     logger.error(f"[{self._table_name}] {name} failed", exc_info=True)
                     self._errors[name] = str(e)
 
-        logger.info(
-            f"[{self._table_name}] total collect took {time.time() - total_start:.2f}s"
-        )
+        logger.info(f"[{self._table_name}] total collect took {time.time() - total_start:.2f}s")
         return self._build_result()
 
     def _timed(self, name: str, fn):
@@ -135,20 +132,13 @@ class IcebergInventoryBuilder:
         return result
 
     def _build_result(self) -> Dict[str, Any]:
-        inventory = (
-            (self._metadata_files or [])
-            + (self._snapshots or [])
-            + (self._manifests or [])
-            + (self._data_files or [])
-        )
+        inventory = (self._metadata_files or []) + (self._snapshots or []) + (self._manifests or []) + (self._data_files or [])
 
         metadata_specs = {"table-name": self._table_name}
         if self._main_metadata_file:
             main_meta_path = self._main_metadata_file["file"]
             try:
-                self._main_metadata_file["schemas"] = format_schemas_to_full_dict(
-                    self._main_metadata_file.get("schemas", [])
-                )
+                self._main_metadata_file["schemas"] = format_schemas_to_full_dict(self._main_metadata_file.get("schemas", []))
                 self._main_metadata_file["table-name"] = self._table_name
                 metadata_specs = self._main_metadata_file
             except Exception as e:
@@ -186,14 +176,10 @@ class IcebergInventoryBuilder:
             "collect_data_files",
             lambda: self._collect_data_files(deduped_manifest_rows),
         )
-        sorted_data_files = sorted(
-            data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True
-        )
+        sorted_data_files = sorted(data_files, key=lambda f: f["_added_snapshot_timestamp"], reverse=True)
 
         self._collect_all_relevant_manifests(deduped_manifest_rows, sorted_data_files)
-        self._data_files = [
-            self._process_data_file(entry) for entry in sorted_data_files
-        ]
+        self._data_files = [self._process_data_file(entry) for entry in sorted_data_files]
 
     def _fill_snapshot_child_files(self, manifest_rows):
         snap_id_to_paths = defaultdict(list)
@@ -215,9 +201,7 @@ class IcebergInventoryBuilder:
         if avro_df is None:
             return []
 
-        window = Window.partitionBy("data_file.file_path").orderBy(
-            F.desc("_added_snapshot_timestamp")
-        )
+        window = Window.partitionBy("data_file.file_path").orderBy(F.desc("_added_snapshot_timestamp"))
         avro_df = avro_df.withColumn("_row_num", F.row_number().over(window))
 
         earliest_df = avro_df.filter(F.col("_row_num") == 1).select(
@@ -262,19 +246,11 @@ class IcebergInventoryBuilder:
         grouped_files_limited_df = grouped_files_df.limit(max_data_files_to_collect + 1)
 
         global_window = Window.orderBy(F.desc("_added_snapshot_timestamp"))
-        grouped_files_limited_df = grouped_files_limited_df.withColumn(
-            "_row_num", F.row_number().over(global_window)
-        )
+        grouped_files_limited_df = grouped_files_limited_df.withColumn("_row_num", F.row_number().over(global_window))
 
         cutoff_timestamp = (
-            grouped_files_limited_df.filter(
-                F.col("_row_num") == max_data_files_to_collect + 1
-            )
-            .agg(
-                F.coalesce(
-                    F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")
-                ).alias("_cutoff")
-            )
+            grouped_files_limited_df.filter(F.col("_row_num") == max_data_files_to_collect + 1)
+            .agg(F.coalesce(F.first("_added_snapshot_timestamp"), F.lit(0).cast("timestamp")).alias("_cutoff"))
             .select("_cutoff")
         )
 
@@ -301,11 +277,7 @@ class IcebergInventoryBuilder:
                     )
                     .withColumn("_add_snapshot_id", F.lit(m_row.added_snapshot_id))
                 )
-                avro_df = (
-                    df
-                    if avro_df is None
-                    else avro_df.unionByName(df, allowMissingColumns=True)
-                )
+                avro_df = df if avro_df is None else avro_df.unionByName(df, allowMissingColumns=True)
             except Exception as e:
                 logger.error(
                     f"[{self._table_name}] Avro read error for {m_row.path}",
@@ -342,8 +314,7 @@ class IcebergInventoryBuilder:
 
         if len(entries) == 0 and (
             self._warnings.get("data_files_limit_exceeded") is None
-            or self._warnings["data_files_limit_exceeded"]["timestamp"]
-            < m_row.added_snapshot_timestamp
+            or self._warnings["data_files_limit_exceeded"]["timestamp"] < m_row.added_snapshot_timestamp
         ):
             self._warnings["data_files_limit_exceeded"] = {
                 "message": (inspect.cleandoc(f"""
@@ -381,8 +352,7 @@ class IcebergInventoryBuilder:
                 "total_rows_in_downstream_files": total_rows,
                 "existing_child_files": child_data_paths_status["existing"],
                 "deleted_child_files": child_data_paths_status["deleted"],
-                "child_files": child_data_paths_status["existing"]
-                + child_data_paths_status["deleted"],
+                "child_files": child_data_paths_status["existing"] + child_data_paths_status["deleted"],
             }
         )
 

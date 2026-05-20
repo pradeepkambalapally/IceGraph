@@ -45,10 +45,7 @@ def normalize_graph_data(table_data: Dict[str, Any]) -> Dict[str, Any]:
                 }
                 if child in deleted_children:
                     edge["is_deleted"] = True
-                elif (
-                    child in branch_children
-                    and branch_children[child] not in connected_branches
-                ):
+                elif child in branch_children and branch_children[child] not in connected_branches:
                     edge["branch_names"] = branch_children[child]
                     connected_branches.add(edge["branch_names"])
 
