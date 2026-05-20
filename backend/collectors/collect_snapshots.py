@@ -11,9 +11,9 @@ from constants import (
     UI_NEWLINE,
     MAX_SNAPSHOTS_TO_COMPUTE,
 )
-from iceberg_inventory_builder.base_file import BaseFile
-from iceberg_inventory_builder.collector import Collector
-from iceberg_inventory_builder.files_collection import FilesCollection
+from base_classes.base_file import BaseFile
+from base_classes.collector import Collector
+from base_classes.files_collection import FilesCollection
 from icegraph_logger import logger
 from utils import timed
 

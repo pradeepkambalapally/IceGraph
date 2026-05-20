@@ -1,15 +1,15 @@
-from iceberg_inventory_builder.collect_manifests import ManifestFileRecord
+from collectors.collect_manifests import ManifestFileRecord
 from pyspark.sql.types import LongType
 from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
 from typing import List
-from iceberg_inventory_builder.extractor import ExtractionResult
+from base_classes.extractor import ExtractionResult
 import os
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
-from iceberg_inventory_builder.extractor import Extractor
+from base_classes.extractor import Extractor
 from constants import MAX_DATA_FILES_TO_COLLECT
 
 max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))

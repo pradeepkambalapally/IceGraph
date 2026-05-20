@@ -1,4 +1,4 @@
-from iceberg_inventory_builder.manifests_appearences_extractor import (
+from extractors.manifests_appearences_extractor import (
     ManifestAppearencesExtractor,
 )
 import inspect
@@ -24,9 +24,9 @@ from constants import (
     UI_NEWLINE,
     MAX_DATA_FILES_TO_COLLECT,
 )
-from iceberg_inventory_builder.collect_metadata import CollectMetadata
-from iceberg_inventory_builder.collect_snapshots import CollectSnapshots
-from iceberg_inventory_builder.find_search_cutoff import (
+from collectors.collect_metadata import CollectMetadata
+from collectors.collect_snapshots import CollectSnapshots
+from search_cutoff.find_search_cutoff import (
     find_search_cutoff,
     SearchCutoff,
 )

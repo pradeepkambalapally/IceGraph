@@ -1,7 +1,7 @@
 from arrow import Arrow
 from dataclasses import dataclass
 
-from iceberg_inventory_builder.base_file import BaseFile
+from base_classes.base_file import BaseFile
 
 
 @dataclass

@@ -8,10 +8,10 @@ from arrow import Arrow
 from pyspark.sql import functions as F
 
 from constants import FileType, MAIN_BRANCH_ICEBERG_TABLE_NAME
-from iceberg_inventory_builder.base_file import BaseFile
-from iceberg_inventory_builder.collect_snapshots import SnapshotRecord
-from iceberg_inventory_builder.collector import Collector
-from iceberg_inventory_builder.files_collection import FilesCollection
+from base_classes.base_file import BaseFile
+from collectors.collect_snapshots import SnapshotRecord
+from base_classes.collector import Collector
+from base_classes.files_collection import FilesCollection
 from icegraph_logger import logger
 from utils import get_json_metadata_from_path, get_metadata_row_slim_df_from_path, timed
 

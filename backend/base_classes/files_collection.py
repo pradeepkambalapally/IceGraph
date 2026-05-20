@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-from iceberg_inventory_builder.base_file import BaseFile
+from base_classes.base_file import BaseFile
 
 
 @dataclass(frozen=True)

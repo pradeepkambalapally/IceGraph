@@ -4,7 +4,7 @@ import pyspark
 
 from dataclasses import dataclass, field
 from typing import Dict
-from iceberg_inventory_builder.spark_table_action import SparkTableAction
+from base_classes.spark_table_action import SparkTableAction
 
 
 @dataclass(frozen=True)
