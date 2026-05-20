@@ -1,4 +1,4 @@
-from collectors.collect_manifests import ManifestFileRecord
+from collectors.collect_manifests import ManifestRecord
 from pyspark.sql.types import LongType
 from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
@@ -26,7 +26,7 @@ DATA_FILE_RECORD_SCHEMA = StructType(
 
 
 class DataFilesAppearencesExtractor(Extractor):
-    def __init__(self, table_name: str, manifest_entries: List[ManifestFileRecord]):
+    def __init__(self, table_name: str, manifest_entries: List[ManifestRecord]):
         super().__init__(table_name)
         self._manifest_entries = manifest_entries
         self._errors = {}
@@ -127,7 +127,7 @@ class DataFilesAppearencesExtractor(Extractor):
 
         return avro_df
 
-    def _collect_data_files_from_manifest(self, manifest_entry: ManifestFileRecord):
+    def _collect_data_files_from_manifest(self, manifest_entry: ManifestRecord):
         return (
             self._spark.read.format("avro")
             .load(manifest_entry.path)
