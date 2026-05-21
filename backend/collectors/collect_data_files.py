@@ -41,7 +41,7 @@ class CollectDataFiles(Collector):
         self._errors = data_files_extraction_result.errors
 
         data_files_rows = data_files_extraction_result.df.collect()
-        self._data_files = [self._process_data_file_row(f) for f in data_files_rows]
+        self._data_files = [self._process_data_file_row(data_file_row) for data_file_row in data_files_rows]
 
         return FilesCollection(files=self._data_files, errors=self._errors)
 
