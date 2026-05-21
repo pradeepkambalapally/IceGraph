@@ -15,6 +15,12 @@ from arrow import Arrow
 from dataclasses import dataclass
 
 from utils import timed
+from base_classes.base_file import HiddenFile
+
+
+@dataclass
+class HiddenManifest(HiddenFile):
+    pointing_snapshots: list[int]
 
 
 @dataclass
@@ -25,6 +31,7 @@ class ManifestRecord(BaseFile):
     total_rows_in_downstream_files: int
     existing_child_files: list[str]
     deleted_child_files: list[str]
+    hidden_manifest_data: HiddenManifest
 
 
 class CollectManifests(Collector):
@@ -62,4 +69,5 @@ class CollectManifests(Collector):
             existing_child_files=[],
             deleted_child_files=[],
             child_files=[],
+            hidden_manifest_data=HiddenManifest(pointing_snapshots=manifest_dict["snapshot_ids"]),
         )

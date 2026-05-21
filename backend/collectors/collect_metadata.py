@@ -14,10 +14,11 @@ from base_classes.collector import Collector
 from base_classes.files_collection import FilesCollection
 from icegraph_logger import logger
 from utils import get_json_metadata_from_path, get_metadata_row_slim_df_from_path, timed
+from base_classes.base_file import HiddenFile
 
 
 @dataclass
-class HiddenMetadata:
+class HiddenMetadata(HiddenFile):
     color_append: float
     branch_files: Dict[str, str]
 

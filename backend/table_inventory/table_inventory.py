@@ -46,15 +46,17 @@ class TableInventory:
     @timed
     def build(self):
         self._find_search_cutoff()
+
         self._collect_and_set_snapshots()
         self._collect_metadata_manifests_and_data_files()
 
         print("\n\n\n")
-        print(self._metadata_files)
         print(self._snapshots)
         print(self._manifests)
-        print(self._data_files)
         print("\n\n\n")
+
+        self._attach_snapshot_files_to_manifest_files()
+        self._attach_manifest_files_to_data_files()
 
     def _find_search_cutoff(self):
         self._search_cutoff = find_search_cutoff(
@@ -133,3 +135,9 @@ class TableInventory:
         ).collect()
 
         return manifests_collection, data_files_collection
+
+    def _attach_snapshot_files_to_manifest_files(self):
+        pass
+
+    def _attach_manifest_files_to_data_files(self):
+        pass
