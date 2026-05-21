@@ -19,7 +19,7 @@ from base_classes.base_file import HiddenFile
 
 
 @dataclass
-class HiddenManifest(HiddenFile):
+class HiddenManifestMetadata(HiddenFile):
     pointing_snapshots: list[int]
 
 
@@ -27,11 +27,11 @@ class HiddenManifest(HiddenFile):
 class ManifestRecord(BaseFile):
     added_snapshot_id: int
     added_snapshot_timestamp: Arrow
-    partitions: str
+    partitions: set
     total_rows_in_downstream_files: int
     existing_child_files: list[str]
     deleted_child_files: list[str]
-    hidden_manifest_data: HiddenManifest
+    hidden_manifest_data: HiddenManifestMetadata
 
 
 class CollectManifests(Collector):
@@ -64,10 +64,10 @@ class CollectManifests(Collector):
             file_path=manifest_dict["path"],
             added_snapshot_id=manifest_dict["added_snapshot_id"],
             added_snapshot_timestamp=manifest_dict["added_snapshot_timestamp"],
-            partitions="",
+            partitions=set(),
             total_rows_in_downstream_files=0,
             existing_child_files=[],
             deleted_child_files=[],
             child_files=[],
-            hidden_manifest_data=HiddenManifest(pointing_snapshots=manifest_dict["snapshot_ids"]),
+            hidden_manifest_data=HiddenManifestMetadata(pointing_snapshots=manifest_dict["snapshot_ids"]),
         )

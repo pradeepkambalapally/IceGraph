@@ -1,3 +1,4 @@
+from table_inventory.table_inventory import TableInventory
 import re
 import os
 import threading
@@ -62,7 +63,8 @@ def _schedule_cleanup(job_id, is_in_lock_block=False):
 
 def _compute_graph_background(job_id, table_name, start_snapshot_id, end_snapshot_id):
     try:
-        table_data = IcebergInventoryBuilder(table_name, start_snapshot_id, end_snapshot_id).collect()
+        table_data = TableInventory(table_name, start_snapshot_id, end_snapshot_id).build()
+        print(table_data)
 
         result = normalize_graph_data(table_data)
 

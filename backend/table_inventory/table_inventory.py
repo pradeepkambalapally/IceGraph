@@ -1,3 +1,7 @@
+from base_classes.base_file import BaseFile
+from constants import FileType
+from dataclasses import dataclass
+from constants import DATA_FILES_CUTOFF_WARNING
 from icegraph_logger import logger
 from concurrent.futures import ThreadPoolExecutor
 from collectors.collect_manifests import CollectManifests
@@ -17,6 +21,21 @@ from search_cutoff.find_search_cutoff import SearchCutoff
 from typing import Dict
 from spark_connect import open_spark_connect_session
 from typing import Optional
+from constants import MAX_DATA_FILES_TO_COLLECT
+import os
+
+max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))
+
+
+@dataclass
+class TableInventoryResult:
+    errors: Dict[str, str]
+    warnings: Dict[str, str]
+    snapshots: List[SnapshotRecord]
+    manifests: List[ManifestRecord]
+    data_files: List[DataFileRecord]
+    metadata_files: List[MetadataFileRecord]
+    current_main_metadata_file: MetadataFileRecord
 
 
 class TableInventory:
@@ -51,12 +70,21 @@ class TableInventory:
         self._collect_metadata_manifests_and_data_files()
 
         self._attach_snapshot_files_to_manifest_files()
-        print("\n\n\n")
-        print(self._snapshots)
-        print(self._manifests)
-        print("\n\n\n")
-
         self._attach_manifest_files_to_data_files()
+
+        self._warn_if_data_cutoff_happend()
+
+        self._get_current_table_specs()
+
+        return TableInventoryResult(
+            errors=self._errors,
+            warnings=self._warnings,
+            snapshots=self._snapshots,
+            manifests=self._manifests,
+            data_files=self._data_files,
+            metadata_files=self._metadata_files,
+            current_main_metadata_file=self.current_main_metadata_file,
+        )
 
     def _find_search_cutoff(self):
         self._search_cutoff = find_search_cutoff(
@@ -137,6 +165,9 @@ class TableInventory:
         return manifests_collection, data_files_collection
 
     def _attach_snapshot_files_to_manifest_files(self):
+        if not self._snapshots or not self._manifests:
+            return
+
         snapshot_id_to_snapshot_file_map = {snapshot.snapshot_id: snapshot for snapshot in self._snapshots}
 
         for manifest in self._manifests:
@@ -150,4 +181,53 @@ class TableInventory:
                     snapshot.child_files.append(manifest.file_path)
 
     def _attach_manifest_files_to_data_files(self):
-        pass
+        if not self._manifests or not self._data_files:
+            return
+
+        manifest_file_path_to_manifest_map = {manifest.file_path: manifest for manifest in self._manifests}
+
+        for data_file in self._data_files:
+            for pointing_manifest in data_file.hidden_data_file_metadata.pointing_manifests:
+                manifest_file_path, manifest_pointing_status = (
+                    pointing_manifest["path"],
+                    pointing_manifest["status"],
+                )
+
+                manifest = manifest_file_path_to_manifest_map.get(manifest_file_path)
+                if not manifest:
+                    self._errors[f"Linking {manifest_file_path} -> {data_file.file_path}"] = "Manifest not found"
+
+                else:
+                    manifest.partitions.add(data_file.partition)
+                    manifest.total_rows_in_downstream_files += data_file.row_count
+
+                    manifest.child_files.append(data_file.file_path)
+                    if manifest_pointing_status == 2:
+                        manifest.deleted_child_files.append(data_file.file_path)
+                    else:
+                        manifest.existing_child_files.append(data_file.file_path)
+
+    def _warn_if_data_cutoff_happend(self):
+        if not self._manifests:
+            return
+
+        max_manifest_added_snapshot_timestamp = None
+        max_manifest_added_snapshot_id = None
+
+        for manifest in self._manifests:
+            if len(manifest.existing_child_files) == 0:
+                if max_manifest_added_snapshot_timestamp is None or max_manifest_added_snapshot_timestamp < manifest.added_snapshot_timestamp:
+                    max_manifest_added_snapshot_timestamp = manifest.added_snapshot_timestamp
+                    max_manifest_added_snapshot_id = manifest.added_snapshot_id
+
+        if max_manifest_added_snapshot_timestamp is not None:
+            self._warnings["data_files_cutoff"] = DATA_FILES_CUTOFF_WARNING.format(
+                max_data_files_to_collect=max_data_files_to_collect,
+                added_snapshot_id=max_manifest_added_snapshot_id,
+                added_snapshot_timestamp=max_manifest_added_snapshot_timestamp,
+            )
+
+    def _get_current_table_specs(self):
+        self.current_main_metadata_file = next(
+            metadata_file for metadata_file in self._metadata_files if metadata_file.type == FileType.MAIN_METADATA
+        )

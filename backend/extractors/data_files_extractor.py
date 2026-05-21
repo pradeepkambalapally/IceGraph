@@ -53,7 +53,7 @@ class DataFilesAppearencesExtractor(Extractor):
                     F.col("manifest_path").alias("path"),
                     F.col("status").alias("status"),
                 )
-            ).alias("manifest_entries")
+            ).alias("pointing_manifests")
         )
         return manifest_entries_df
 
@@ -71,7 +71,7 @@ class DataFilesAppearencesExtractor(Extractor):
 
     def _join_data_file_with_manifest_entries(self, earliest_df, manifest_entries_df):
         return manifest_entries_df.join(earliest_df, on="file_path", how="inner").select(
-            "manifest_entries",
+            "pointing_manifests",
             "added_snapshot_id",
             "added_snapshot_timestamp",
             "data_file.file_path",

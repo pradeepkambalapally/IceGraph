@@ -5,11 +5,16 @@ from collectors.collect_manifests import ManifestRecord
 from dataclasses import dataclass
 from typing import List, Dict
 
-from base_classes.base_file import BaseFile
+from base_classes.base_file import BaseFile, HiddenFile
 from base_classes.collector import Collector
 from base_classes.files_collection import FilesCollection
 from constants import FileType
 from utils import timed
+
+
+@dataclass
+class HiddenDataFileMetadata(HiddenFile):
+    pointing_manifests: list[str]
 
 
 @dataclass
@@ -22,6 +27,7 @@ class DataFileRecord(BaseFile):
     split_offsets: str
     key_metadata: str
     equality_ids: str
+    hidden_data_file_metadata: HiddenDataFileMetadata
 
 
 class CollectDataFiles(Collector):
@@ -59,6 +65,9 @@ class CollectDataFiles(Collector):
             key_metadata=data_file_dict["key_metadata"],
             equality_ids=data_file_dict["equality_ids"],
             child_files=[],
+            hidden_data_file_metadata=HiddenDataFileMetadata(
+                pointing_manifests=data_file_dict["pointing_manifests"],
+            ),
         )
 
     def _detect_file_type(self, content: int) -> FileType:
