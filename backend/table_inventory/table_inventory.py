@@ -50,12 +50,12 @@ class TableInventory:
         self._collect_and_set_snapshots()
         self._collect_metadata_manifests_and_data_files()
 
+        self._attach_snapshot_files_to_manifest_files()
         print("\n\n\n")
         print(self._snapshots)
         print(self._manifests)
         print("\n\n\n")
 
-        self._attach_snapshot_files_to_manifest_files()
         self._attach_manifest_files_to_data_files()
 
     def _find_search_cutoff(self):
@@ -137,7 +137,17 @@ class TableInventory:
         return manifests_collection, data_files_collection
 
     def _attach_snapshot_files_to_manifest_files(self):
-        pass
+        snapshot_id_to_snapshot_file_map = {snapshot.snapshot_id: snapshot for snapshot in self._snapshots}
+
+        for manifest in self._manifests:
+            for snapshot_id in manifest.hidden_manifest_data.pointing_snapshots:
+
+                snapshot = snapshot_id_to_snapshot_file_map.get(snapshot_id)
+                if not snapshot:
+                    self._errors[f"Linking {snapshot_id} -> {manifest.file_path}"] = "Snapshot not found"
+
+                else:
+                    snapshot.child_files.append(manifest.file_path)
 
     def _attach_manifest_files_to_data_files(self):
         pass
