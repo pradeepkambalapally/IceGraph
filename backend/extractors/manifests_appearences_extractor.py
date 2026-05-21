@@ -43,22 +43,12 @@ class ManifestAppearencesExtractor(Extractor):
         manifests_df = self._union_manifests_for_snapshots()
         manifests_with_timestamps_df = self._enreatch_manifests_with_timestamps(manifests_df)
 
-        valid_manifests_df = manifests_with_timestamps_df.join(self._manifests_to_ignore_df, on="path", how="left_anti")
+        valid_manifests_df = self._filter_ignored_manifests(manifests_with_timestamps_df)
+        manifests_df = self._aggregate_snapshots_by_manifests_sorted(valid_manifests_df)
 
         return ExtractionResult(
-            valid_manifests_df.select("path", "added_snapshot_id", "added_snapshot_timestamp", "snapshot_id"),
+            manifests_df,
             self._errors,
-        )
-
-    def _read_manifests_for_snapshot(self, manifest_list_path: str, snap_id: str) -> pyspark.sql.DataFrame:
-        return (
-            self._spark.read.format("avro")
-            .load(manifest_list_path)
-            .select(
-                F.col("manifest_path").alias("path"),
-                F.col("added_snapshot_id"),
-                F.lit(snap_id).alias("snapshot_id"),
-            )
         )
 
     def _union_manifests_for_snapshots(self) -> pyspark.sql.DataFrame:
@@ -81,10 +71,15 @@ class ManifestAppearencesExtractor(Extractor):
 
         return result.select(*(MANIFEST_BASE_SCHEMA.fieldNames()))
 
-    def _snapshot_to_timestamp_df(self) -> pyspark.sql.DataFrame:
-        return self._spark.createDataFrame(
-            [(snap.snapshot_id, snap.timestamp) for snap in self._snapshots],
-            SNAPSHOT_TO_TIMESTAMP_SCHEMA,
+    def _read_manifests_for_snapshot(self, manifest_list_path: str, snap_id: str) -> pyspark.sql.DataFrame:
+        return (
+            self._spark.read.format("avro")
+            .load(manifest_list_path)
+            .select(
+                F.col("manifest_path").alias("path"),
+                F.col("added_snapshot_id"),
+                F.lit(snap_id).alias("snapshot_id"),
+            )
         )
 
     def _enreatch_manifests_with_timestamps(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
@@ -92,4 +87,22 @@ class ManifestAppearencesExtractor(Extractor):
             self._snapshot_to_timestamp_df(),
             F.col("added_snapshot_id") == F.col("lookup_snap_id"),
             "left",
+        )
+
+    def _snapshot_to_timestamp_df(self) -> pyspark.sql.DataFrame:
+        return self._spark.createDataFrame(
+            [(snap.snapshot_id, snap.timestamp) for snap in self._snapshots],
+            SNAPSHOT_TO_TIMESTAMP_SCHEMA,
+        )
+
+    def _filter_ignored_manifests(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
+        return manifests_df.join(self._manifests_to_ignore_df, on="path", how="left_anti").select(
+            "path", "added_snapshot_id", "added_snapshot_timestamp", "snapshot_id"
+        )
+
+    def _aggregate_snapshots_by_manifests_sorted(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
+        return (
+            manifests_df.groupBy("path", "added_snapshot_id", "added_snapshot_timestamp")
+            .agg(F.collect_list("snapshot_id").alias("snapshot_ids"))
+            .sort("added_snapshot_timestamp")
         )
