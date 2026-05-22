@@ -7,10 +7,9 @@ from arrow import Arrow
 from base_classes.base_file import BaseFile, HiddenFile
 from base_classes.utils import timed
 from collectors.collect_snapshots import SnapshotRecord
-from collectors.collector import Collector
-from collectors.files_collection import FilesCollection
+from collectors.collector import Collector, FilesCollection
 from constants import FileType
-from extractors.manifests_appearences_extractor import ManifestAppearanceExtractor
+from extractors.manifests_extractor import ManifestsExtractor
 
 
 @dataclass
@@ -45,7 +44,7 @@ class CollectManifests(Collector):
 
     @timed
     def collect(self) -> FilesCollection:
-        manifest_extraction_result = ManifestAppearanceExtractor(self._table_name, self._snapshots, self._manifests_to_ignore_df).extract_dataframe()
+        manifest_extraction_result = ManifestsExtractor(self._table_name, self._snapshots, self._manifests_to_ignore_df).extract_dataframe()
         self._errors = manifest_extraction_result.errors
 
         manifests_rows = manifest_extraction_result.dataframe.collect()

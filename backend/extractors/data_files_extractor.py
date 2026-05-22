@@ -38,7 +38,7 @@ DATA_FILE_RECORD_SCHEMA = StructType(
 )
 
 
-class DataFilesAppearanceExtractor(Extractor):
+class DataFilesExtractor(Extractor):
     def __init__(self, table_name: str, manifest_entries: List[ManifestRecord]):
         super().__init__(table_name)
         self._manifest_entries = manifest_entries

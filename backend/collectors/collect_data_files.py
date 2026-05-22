@@ -3,10 +3,9 @@ from typing import Dict, List
 
 from base_classes.base_file import BaseFile, HiddenFile
 from collectors.collect_manifests import ManifestRecord
-from collectors.collector import Collector
-from collectors.files_collection import FilesCollection
+from collectors.collector import Collector, FilesCollection
 from constants import FileType, UI_NEWLINE
-from extractors.data_files_extractor import DataFilesAppearanceExtractor
+from extractors.data_files_extractor import DataFilesExtractor
 from collectors.utils import format_partition
 from base_classes.utils import timed
 
@@ -43,7 +42,7 @@ class CollectDataFiles(Collector):
 
     @timed
     def collect(self) -> FilesCollection:
-        data_files_extraction_result = DataFilesAppearanceExtractor(self._table_name, self._manifests).extract_dataframe()
+        data_files_extraction_result = DataFilesExtractor(self._table_name, self._manifests).extract_dataframe()
         self._errors = data_files_extraction_result.errors
 
         data_files_rows = data_files_extraction_result.dataframe.collect()

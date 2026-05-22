@@ -9,8 +9,7 @@ from pyspark.sql import functions as F
 
 from base_classes.base_file import BaseFile, HiddenFile
 from collectors.collect_snapshots import SnapshotRecord
-from collectors.collector import Collector
-from collectors.files_collection import FilesCollection
+from collectors.collector import Collector, FilesCollection
 from constants import FileType, MAIN_BRANCH_ICEBERG_TABLE_NAME
 from icegraph_logger import logger
 from collectors.utils import get_metadata_row_slim_df_from_path

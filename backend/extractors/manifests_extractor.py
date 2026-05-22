@@ -21,7 +21,7 @@ MANIFEST_BASE_SCHEMA = StructType(
 )
 
 
-class ManifestAppearanceExtractor(Extractor):
+class ManifestsExtractor(Extractor):
     def __init__(
         self,
         table_name: str,
