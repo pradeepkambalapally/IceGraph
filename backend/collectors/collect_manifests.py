@@ -3,8 +3,8 @@ from typing import Dict
 
 import pyspark
 
-from base_classes.collector import Collector
-from base_classes.files_collection import FilesCollection
+from collectors.collector import Collector
+from collectors.files_collection import FilesCollection
 from base_classes.base_file import BaseFile
 
 from collectors.collect_snapshots import SnapshotRecord

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import List, Dict
 
 from base_classes.base_file import BaseFile, HiddenFile
-from base_classes.collector import Collector
-from base_classes.files_collection import FilesCollection
+from collectors.collector import Collector
+from collectors.files_collection import FilesCollection
 from constants import FileType
 from utils import timed
 

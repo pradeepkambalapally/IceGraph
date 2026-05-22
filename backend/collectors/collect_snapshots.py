@@ -12,8 +12,8 @@ from constants import (
     MAX_SNAPSHOTS_TO_COMPUTE,
 )
 from base_classes.base_file import BaseFile
-from base_classes.collector import Collector
-from base_classes.files_collection import FilesCollection
+from collectors.collector import Collector
+from collectors.files_collection import FilesCollection
 from icegraph_logger import logger
 from utils import timed
 

@@ -4,12 +4,12 @@ from pyspark.sql.types import StringType
 from pyspark.sql.types import StructField
 from pyspark.sql.types import StructType
 from typing import List
-from base_classes.extractor import ExtractionResult
+from extractors.extractor import ExtractionResult
 import os
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
-from base_classes.extractor import Extractor
+from extractors.extractor import Extractor
 from constants import MAX_DATA_FILES_TO_COLLECT
 
 max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))
