@@ -436,7 +436,6 @@ export default function TimelinePage() {
                       ['Schema ID', selected.details.current_schema_id],
                       ['Spec ID', selected.details.partition_spec_id],
                       ['Sort Order ID', selected.details.sort_order_id],
-                      ['Format Version', selected.details.table_format_version],
                     ].map(([label, value]) => (
                       <div key={label} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
                         <span className="text-xs text-slate-400">{label}</span>
