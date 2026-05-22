@@ -13,7 +13,8 @@ from collectors.collector import Collector
 from collectors.files_collection import FilesCollection
 from constants import FileType, MAIN_BRANCH_ICEBERG_TABLE_NAME
 from icegraph_logger import logger
-from utils import get_json_metadata_from_path, get_metadata_row_slim_df_from_path, timed
+from collectors.utils import get_metadata_row_slim_df_from_path
+from base_classes.utils import timed
 
 
 @dataclass
@@ -54,7 +55,6 @@ class CollectMetadata(Collector):
         self._end_metadata_cutoff = end_metadata_cutoff
 
         self._metadata_files: List[MetadataFileRecord] = []
-        self._main_metadata_file: dict = {}
         self._errors: Dict[str, str] = {}
 
     @timed
@@ -106,20 +106,6 @@ class CollectMetadata(Collector):
     def _get_snap_id_to_path(self) -> Dict[int, str]:
         return {s.snapshot_id: s.file_path for s in (self._snapshots or [])}
 
-    def _load_main_metadata_file(self, row: dict) -> None:
-        file = row["file"]
-
-        try:
-            self._main_metadata_file = get_json_metadata_from_path(file)
-            self._main_metadata_file["file"] = file
-
-        except Exception as e:
-            logger.error(
-                f"[{self._table_name}] Main metadata file read error for {file}",
-                exc_info=True,
-            )
-            self._errors[file] = f"Main metadata file read error: {e}"
-
     @staticmethod
     def _parse_refs(row: dict) -> dict:
         return json.loads(row["refs"]) if row.get("refs") else {}
@@ -146,11 +132,7 @@ class CollectMetadata(Collector):
 
     def _parse_metadata_row(self, index: int, row: dict, rows: list, snap_id_to_path: dict) -> MetadataFileRecord:
         number_of_rows = len(rows)
-        file_type = FileType.METADATA
-
-        if index == 0:
-            file_type = FileType.MAIN_METADATA
-            self._load_main_metadata_file(row)
+        file_type = FileType.MAIN_METADATA if index == 0 else FileType.METADATA
 
         refs = self._parse_refs(row)
         branch_files_build = self._build_branch_files(refs, snap_id_to_path)

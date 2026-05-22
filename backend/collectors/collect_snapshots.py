@@ -9,9 +9,9 @@ from pyspark.sql import functions as F
 from base_classes.base_file import BaseFile
 from collectors.collector import Collector
 from collectors.files_collection import FilesCollection
-from constants import (FileType, MAX_SNAPSHOTS_TO_COMPUTE, UI_NEWLINE)
+from constants import FileType, MAX_SNAPSHOTS_TO_COMPUTE, UI_NEWLINE
 from icegraph_logger import logger
-from utils import timed
+from base_classes.utils import timed
 
 max_snapshots_to_compute = int(os.getenv("MAX_SNAPSHOTS_TO_COMPUTE", MAX_SNAPSHOTS_TO_COMPUTE))
 

@@ -6,7 +6,7 @@ from pyspark.sql import DataFrame, SparkSession, functions as F
 from pyspark.sql.types import StringType, StructField, StructType
 
 from icegraph_logger import logger
-from utils import timed, to_arrow_tz
+from base_classes.utils import timed, to_arrow_tz
 
 
 @dataclass

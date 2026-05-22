@@ -1,9 +1,10 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from base_classes.spark_table_action import SparkTableAction
+from base_classes.utils import timed
 from collectors.collect_data_files import CollectDataFiles, DataFileRecord
 from collectors.collect_manifests import CollectManifests, ManifestRecord
 from collectors.collect_metadata import CollectMetadata, MetadataFileRecord
@@ -11,7 +12,7 @@ from collectors.collect_snapshots import CollectSnapshots, SnapshotRecord
 from constants import DATA_FILES_CUTOFF_WARNING, FileType, MAX_DATA_FILES_TO_COLLECT
 from icegraph_logger import logger
 from search_cutoff.find_search_cutoff import SearchCutoff, find_search_cutoff
-from utils import format_schemas_to_full_dict, get_json_metadata_from_path, timed
+from table_inventory.utils import format_schemas_to_full_dict, get_json_metadata_from_path
 
 max_data_files_to_collect = int(os.getenv("MAX_DATA_FILES_TO_COLLECT", MAX_DATA_FILES_TO_COLLECT))
 
@@ -46,12 +47,12 @@ class TableInventory(SparkTableAction):
 
         self._search_cutoff: SearchCutoff = None
 
-        self._metadata_files: List[MetadataFileRecord] = None
-        self._snapshots: List[SnapshotRecord] = None
-        self._manifests: List[ManifestRecord] = None
-        self._data_files: List[DataFileRecord] = None
+        self._metadata_files: List[MetadataFileRecord] = []
+        self._snapshots: List[SnapshotRecord] = []
+        self._manifests: List[ManifestRecord] = []
+        self._data_files: List[DataFileRecord] = []
 
-        self._current_table_specs: Dict[str, Any] = None
+        self._current_table_specs: Dict[str, Any] = {}
 
     @timed
     def build(self):
@@ -63,7 +64,7 @@ class TableInventory(SparkTableAction):
         self._attach_snapshot_files_to_manifest_files()
         self._attach_manifest_files_to_data_files()
 
-        self._warn_if_data_cutoff_happend()
+        self._warn_if_data_cutoff_happened()
 
         self._set_current_table_specs()
 
@@ -198,7 +199,7 @@ class TableInventory(SparkTableAction):
                     else:
                         manifest.existing_child_files.append(data_file.file_path)
 
-    def _warn_if_data_cutoff_happend(self):
+    def _warn_if_data_cutoff_happened(self):
         if not self._manifests:
             return
 
@@ -231,7 +232,7 @@ class TableInventory(SparkTableAction):
 
         except Exception as e:
             logger.error(
-                f"[{self._table_name}] Metadata specs error for {current_main_metadata_file.file_path}",
+                f"[{self._table_name}] Metadata specs error for main metadata file path reading",
                 exc_info=True,
             )
             self._errors["collect_current_table_specs"] = f"Metadata specs error: {e}"

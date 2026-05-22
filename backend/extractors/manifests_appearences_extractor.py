@@ -1,6 +1,6 @@
 import pyspark
 from pyspark.sql import functions as F
-from pyspark.sql.types import (LongType, StringType, StructField, StructType)
+from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from collectors.collect_snapshots import SnapshotRecord
 from extractors.extractor import ExtractionResult, Extractor
@@ -21,7 +21,7 @@ MANIFEST_BASE_SCHEMA = StructType(
 )
 
 
-class ManifestAppearencesExtractor(Extractor):
+class ManifestAppearanceExtractor(Extractor):
     def __init__(
         self,
         table_name: str,
@@ -35,7 +35,7 @@ class ManifestAppearencesExtractor(Extractor):
 
     def extract_dataframe(self) -> ExtractionResult:
         manifests_df = self._union_manifests_for_snapshots()
-        manifests_with_timestamps_df = self._enreatch_manifests_with_timestamps(manifests_df)
+        manifests_with_timestamps_df = self._enrich_manifests_with_timestamps(manifests_df)
 
         valid_manifests_df = self._filter_ignored_manifests(manifests_with_timestamps_df)
         manifests_df = self._aggregate_snapshots_by_manifests_sorted(valid_manifests_df)
@@ -76,7 +76,7 @@ class ManifestAppearencesExtractor(Extractor):
             )
         )
 
-    def _enreatch_manifests_with_timestamps(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
+    def _enrich_manifests_with_timestamps(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
         return manifests_df.join(
             self._snapshot_to_timestamp_df(),
             F.col("added_snapshot_id") == F.col("lookup_snap_id"),
@@ -94,9 +94,10 @@ class ManifestAppearencesExtractor(Extractor):
             "path", "added_snapshot_id", "added_snapshot_timestamp", "snapshot_id"
         )
 
-    def _aggregate_snapshots_by_manifests_sorted(self, manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
+    @staticmethod
+    def _aggregate_snapshots_by_manifests_sorted(manifests_df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
         return (
             manifests_df.groupBy("path", "added_snapshot_id", "added_snapshot_timestamp")
             .agg(F.collect_list("snapshot_id").alias("snapshot_ids"))
-            .sort(F.col("added_snapshot_timestamp").desc())
+            .orderBy(F.col("added_snapshot_timestamp"), ascending=False)
         )

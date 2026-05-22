@@ -19,4 +19,7 @@ class BaseFile:
         result_dict = {field.name: getattr(self, field.name) for field in fields(self) if not isinstance(getattr(self, field.name), HiddenFile)}
         result_dict["type"] = result_dict["type"].value
 
+        child_files = result_dict.pop("child_files")
+        result_dict["child_files"] = child_files
+
         return result_dict

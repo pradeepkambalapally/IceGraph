@@ -19,7 +19,7 @@ from graph_normalizer.graph_normalizer import GraphNormalizer
 from icegraph_logger import logger
 from snapshot_map.snapshot_mapping import collect_snapshot_map
 from table_inventory.table_inventory import TableInventory
-from utils import verify_iceberg_table
+from base_classes.utils import verify_iceberg_table
 
 load_dotenv()
 app = Flask(__name__, static_url_path="/static")

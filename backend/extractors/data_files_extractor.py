@@ -38,7 +38,7 @@ DATA_FILE_RECORD_SCHEMA = StructType(
 )
 
 
-class DataFilesAppearencesExtractor(Extractor):
+class DataFilesAppearanceExtractor(Extractor):
     def __init__(self, table_name: str, manifest_entries: List[ManifestRecord]):
         super().__init__(table_name)
         self._manifest_entries = manifest_entries
@@ -46,11 +46,11 @@ class DataFilesAppearencesExtractor(Extractor):
 
     def extract_dataframe(self) -> ExtractionResult:
         data_files_df = self._collect_data_files_from_manifests(self._manifest_entries)
-        data_files_with_erliest_ts_df = self._match_data_file_to_earliest_snapshot(data_files_df)
+        data_files_with_earliest_ts_df = self._match_data_file_to_earliest_snapshot(data_files_df)
 
         data_files_by_manifests_df = self._group_data_files_by_manifests(data_files_df)
 
-        data_files_with_manifest_entries_df = self._join_data_file_with_manifest_entries(data_files_with_erliest_ts_df, data_files_by_manifests_df)
+        data_files_with_manifest_entries_df = self._join_data_file_with_manifest_entries(data_files_with_earliest_ts_df, data_files_by_manifests_df)
         data_files_limited_df = self._limit_and_rank_files_by_snapshot_timestamp(data_files_with_manifest_entries_df)
 
         snapshot_timestamp_cutoff_df = self._find_cutoff_snapshot_timestamp(data_files_limited_df)
@@ -59,7 +59,8 @@ class DataFilesAppearencesExtractor(Extractor):
 
         return ExtractionResult(included_data_files_df, self._errors)
 
-    def _group_data_files_by_manifests(self, avro_df):
+    @staticmethod
+    def _group_data_files_by_manifests(avro_df):
         manifest_entries_df = avro_df.groupBy("data_file.file_path").agg(
             F.collect_list(
                 F.struct(
@@ -70,7 +71,8 @@ class DataFilesAppearencesExtractor(Extractor):
         )
         return manifest_entries_df
 
-    def _match_data_file_to_earliest_snapshot(self, avro_df):
+    @staticmethod
+    def _match_data_file_to_earliest_snapshot(avro_df):
         window = Window.partitionBy("data_file.file_path").orderBy(F.desc("added_snapshot_timestamp"))
         avro_df = avro_df.withColumn("row_num", F.row_number().over(window))
 
@@ -82,7 +84,8 @@ class DataFilesAppearencesExtractor(Extractor):
         )
         return earliest_df
 
-    def _join_data_file_with_manifest_entries(self, earliest_df, manifest_entries_df):
+    @staticmethod
+    def _join_data_file_with_manifest_entries(earliest_df, manifest_entries_df):
         return manifest_entries_df.join(earliest_df, on="file_path", how="inner").select(
             "pointing_manifests",
             "added_snapshot_id",
@@ -99,7 +102,8 @@ class DataFilesAppearencesExtractor(Extractor):
             "data_file.equality_ids",
         )
 
-    def _limit_and_rank_files_by_snapshot_timestamp(self, df):
+    @staticmethod
+    def _limit_and_rank_files_by_snapshot_timestamp(df):
         df = df.orderBy(F.desc("added_snapshot_timestamp")).limit(max_data_files_to_collect + 1)
 
         row_num_window = Window.orderBy(F.desc("added_snapshot_timestamp"))
@@ -107,14 +111,16 @@ class DataFilesAppearencesExtractor(Extractor):
 
         return df
 
-    def _find_cutoff_snapshot_timestamp(self, df):
+    @staticmethod
+    def _find_cutoff_snapshot_timestamp(df):
         return (
             df.filter(F.col("row_num") == max_data_files_to_collect + 1)
             .agg(F.coalesce(F.first("added_snapshot_timestamp"), F.lit(0).cast("timestamp")).alias("snapshot_timestamp_cutoff"))
             .select("snapshot_timestamp_cutoff")
         )
 
-    def _find_included_data_files(self, grouped_files_limited_df, snapshot_timestamp_cutoff_df):
+    @staticmethod
+    def _find_included_data_files(grouped_files_limited_df, snapshot_timestamp_cutoff_df):
         return (
             grouped_files_limited_df.join(F.broadcast(snapshot_timestamp_cutoff_df), how="cross")
             .filter(F.col("added_snapshot_timestamp") > F.col("snapshot_timestamp_cutoff"))

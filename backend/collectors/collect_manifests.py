@@ -1,16 +1,16 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List
 
 import pyspark
 from arrow import Arrow
 
 from base_classes.base_file import BaseFile, HiddenFile
+from base_classes.utils import timed
 from collectors.collect_snapshots import SnapshotRecord
 from collectors.collector import Collector
 from collectors.files_collection import FilesCollection
 from constants import FileType
-from extractors.manifests_appearences_extractor import ManifestAppearencesExtractor
-from utils import timed
+from extractors.manifests_appearences_extractor import ManifestAppearanceExtractor
 
 
 @dataclass
@@ -41,9 +41,11 @@ class CollectManifests(Collector):
         self._manifests_to_ignore_df = manifests_to_ignore_df
         self._errors: Dict[str, str] = {}
 
+        self._manifests: List[ManifestRecord] = []
+
     @timed
     def collect(self) -> FilesCollection:
-        manifest_extraction_result = ManifestAppearencesExtractor(self._table_name, self._snapshots, self._manifests_to_ignore_df).extract_dataframe()
+        manifest_extraction_result = ManifestAppearanceExtractor(self._table_name, self._snapshots, self._manifests_to_ignore_df).extract_dataframe()
         self._errors = manifest_extraction_result.errors
 
         manifests_rows = manifest_extraction_result.dataframe.collect()
@@ -51,7 +53,8 @@ class CollectManifests(Collector):
 
         return FilesCollection(files=self._manifests, errors=self._errors)
 
-    def _process_manifest_row(self, manifest_row) -> ManifestRecord:
+    @staticmethod
+    def _process_manifest_row(manifest_row) -> ManifestRecord:
         manifest_dict = manifest_row.asDict(recursive=True)
 
         return ManifestRecord(

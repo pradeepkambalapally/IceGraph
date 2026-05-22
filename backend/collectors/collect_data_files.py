@@ -6,13 +6,14 @@ from collectors.collect_manifests import ManifestRecord
 from collectors.collector import Collector
 from collectors.files_collection import FilesCollection
 from constants import FileType, UI_NEWLINE
-from extractors.data_files_extractor import DataFilesAppearencesExtractor
-from utils import format_partition, timed
+from extractors.data_files_extractor import DataFilesAppearanceExtractor
+from collectors.utils import format_partition
+from base_classes.utils import timed
 
 
 @dataclass
 class HiddenDataFileMetadata(HiddenFile):
-    pointing_manifests: list[str]
+    pointing_manifests: list[Dict[str, str]]
 
 
 @dataclass
@@ -38,9 +39,11 @@ class CollectDataFiles(Collector):
         self._manifests = manifests
         self._errors: Dict[str, str] = {}
 
+        self._data_files: List[DataFileRecord] = []
+
     @timed
     def collect(self) -> FilesCollection:
-        data_files_extraction_result = DataFilesAppearencesExtractor(self._table_name, self._manifests).extract_dataframe()
+        data_files_extraction_result = DataFilesAppearanceExtractor(self._table_name, self._manifests).extract_dataframe()
         self._errors = data_files_extraction_result.errors
 
         data_files_rows = data_files_extraction_result.dataframe.collect()
@@ -68,7 +71,8 @@ class CollectDataFiles(Collector):
             ),
         )
 
-    def _detect_file_type(self, content: int) -> FileType:
+    @staticmethod
+    def _detect_file_type(content: int) -> FileType:
         if content == 0:
             return FileType.DATA
 
