@@ -1,6 +1,7 @@
 import JSONbig from 'json-bigint'
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
+import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 
 import MetadataStructured from '../components/MetadataStructured'
 import { useTableSpecs } from '../context/TableSpecsContext'
@@ -11,7 +12,7 @@ import {
   UI_NEWLINE,
   UI_SECTION_NEWLINE,
 } from '../graphConstants'
-import { getCachedData } from '../utils/cache_utils'
+import { getCachedData } from '../utils/cacheUtils'
 
 const parseNodeDetails = (details) => {
   if (!details) return {}
@@ -30,7 +31,18 @@ const parseNodeDetails = (details) => {
     if (idx === -1) continue
 
     const key = line.substring(0, idx).trim()
-    const value = line.substring(idx + 1).trim()
+    let value = line.substring(idx + 1).trim()
+
+    if (key.includes('timestamp')) {
+      try {
+        const dateObj = parseUtcDate(value)
+        if (dateObj) {
+          value = formatLocaleDateTime(dateObj)
+        }
+      } catch (e) {
+        console.error('Failed to parse timestamp key:', key, 'value:', value, 'error:', e)
+      }
+    }
 
     result[key] = value
   }

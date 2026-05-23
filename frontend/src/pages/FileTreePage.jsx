@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { parseUtcDate } from '../utils/dateUtils'
 import { FileType } from '../graphConstants'
 
 const FILE_TYPES = new Set([FileType.DATA, FileType.POSITION_DELETE, FileType.EQUALITY_DELETE])
@@ -284,7 +283,7 @@ export default function FileTreePage() {
 
     const snaps = allNodes
       .filter(n => n.type === FileType.SNAPSHOT)
-      .sort((a, b) => (parseUtcDate(a.details.timestamp) || 0) - (parseUtcDate(b.details.timestamp) || 0))
+      .sort((a, b) => (a.details.timestamp || 0) - (b.details.timestamp || 0))
 
     const snapById = {}
     for (const s of snaps) {

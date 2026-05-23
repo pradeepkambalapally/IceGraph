@@ -37,20 +37,19 @@ class EndCutoffs(NamedTuple):
 def find_search_cutoff(
     spark: SparkSession,
     table_name: str,
-    spark_tz: str,
     start_snapshot_id: Optional[int],
     end_snapshot_id: Optional[int],
 ) -> SearchCutoff:
     cutoff = SearchCutoff.with_spark(spark)
 
     if start_snapshot_id:
-        start = _get_start_cutoffs(spark, table_name, spark_tz, start_snapshot_id)
+        start = _get_start_cutoffs(spark, table_name, start_snapshot_id)
         cutoff.start_snapshot_cutoff = start.snapshot_cutoff
         cutoff.start_metadata_cutoff = start.metadata_cutoff
         cutoff.manifests_to_ignore_df = start.manifests_to_ignore_df
 
     if end_snapshot_id:
-        end = _get_end_cutoffs(spark, table_name, spark_tz, end_snapshot_id)
+        end = _get_end_cutoffs(spark, table_name, end_snapshot_id)
         cutoff.end_snapshot_cutoff = end.snapshot_cutoff
         cutoff.end_metadata_cutoff = end.metadata_cutoff
 
@@ -63,7 +62,6 @@ def find_search_cutoff(
 def _get_start_cutoffs(
     spark: SparkSession,
     table_name: str,
-    spark_tz: str,
     start_snapshot_id: int,
 ) -> StartCutoffs:
     row = spark.sql(f"""
@@ -79,7 +77,7 @@ def _get_start_cutoffs(
             manifests_to_ignore_df=_create_empty_manifests_to_ignore_df(spark),
         )
 
-    snapshot_cutoff = to_arrow_tz(row.committed_at, spark_tz)
+    snapshot_cutoff = to_arrow_tz(row.committed_at, "UTC")
 
     meta_row = spark.sql(f"""
         SELECT date_format(MIN(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
@@ -87,7 +85,7 @@ def _get_start_cutoffs(
         WHERE latest_snapshot_id = {start_snapshot_id}
     """).first()
 
-    metadata_cutoff = to_arrow_tz(meta_row.ts, spark_tz) if meta_row and meta_row.ts else snapshot_cutoff
+    metadata_cutoff = to_arrow_tz(meta_row.ts, "UTC") if meta_row and meta_row.ts else snapshot_cutoff
 
     manifests_to_ignore_df = _get_manifests_to_ignore_df(spark, table_name, row.parent_id)
 
@@ -101,7 +99,6 @@ def _get_start_cutoffs(
 def _get_end_cutoffs(
     spark: SparkSession,
     table_name: str,
-    spark_tz: str,
     end_snapshot_id: int,
 ) -> EndCutoffs:
     row = spark.sql(f"""
@@ -116,7 +113,7 @@ def _get_end_cutoffs(
             metadata_cutoff=arrow.Arrow.max,
         )
 
-    snapshot_cutoff = to_arrow_tz(row.committed_at, spark_tz)
+    snapshot_cutoff = to_arrow_tz(row.committed_at, "UTC")
 
     meta_row = spark.sql(f"""
         SELECT date_format(MAX(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
@@ -124,7 +121,7 @@ def _get_end_cutoffs(
         WHERE latest_snapshot_id = {end_snapshot_id}
     """).first()
 
-    metadata_cutoff = to_arrow_tz(meta_row.ts, spark_tz) if meta_row and meta_row.ts else snapshot_cutoff
+    metadata_cutoff = to_arrow_tz(meta_row.ts, "UTC") if meta_row and meta_row.ts else snapshot_cutoff
 
     return EndCutoffs(
         snapshot_cutoff=snapshot_cutoff,

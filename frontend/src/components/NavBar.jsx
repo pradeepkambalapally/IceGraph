@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
 import logo from '../assets/icegraph.png'
 import { useTableSpecs } from '../context/TableSpecsContext'
-import { cacheData, clearCachedData } from '../utils/cache_utils'
+import { cacheData, clearCachedData } from '../utils/cacheUtils'
 
 export default function NavBar() {
   const location = useLocation()

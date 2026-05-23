@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileType } from '../graphConstants'
+import { formatLocaleDateTime } from '../utils/dateUtils'
 
 function Section({ title, children }) {
   return (
@@ -144,7 +145,7 @@ export default function MetadataPage() {
   const refs = metadata.refs ? Object.entries(metadata.refs) : []
 
   const lastUpdated = metadata['last-updated-ms']
-    ? new Date(metadata['last-updated-ms']).toLocaleString()
+    ? formatLocaleDateTime((new Date(metadata['last-updated-ms'])))
     : null
 
   return (
