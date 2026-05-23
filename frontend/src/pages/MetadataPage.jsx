@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { FileType, UI_SECTION_NEWLINE } from '../graphConstants'
+import { FileType } from '../graphConstants'
+import { formatLocaleDateTime } from '../utils/dateUtils'
 
 function Section({ title, children }) {
   return (
@@ -42,16 +43,16 @@ function TypeDisplay({ type }) {
         <div className="ml-3 border-l-2 border-[#2d3748] pl-4 flex flex-col gap-3 py-1">
           {type.fields.map(f => (
             <div key={f.id || f['field-id'] || f.name} className="flex flex-col gap-1.5">
-               <div className="flex items-center gap-2">
-                  <span className="text-[0.65rem] font-mono text-slate-500 w-5 text-right shrink-0">
-                    {f.id || f['field-id'] || '—'}
-                  </span>
-                  <span className="text-sm font-semibold text-[#e2e8f0]">{f.name}</span>
-                  {f.required === false && (
-                    <span className="text-[0.6rem] font-bold text-slate-600 uppercase">optional</span>
-                  )}
-               </div>
-               <TypeDisplay type={f.type} />
+              <div className="flex items-center gap-2">
+                <span className="text-[0.65rem] font-mono text-slate-500 w-5 text-right shrink-0">
+                  {f.id || f['field-id'] || '—'}
+                </span>
+                <span className="text-sm font-semibold text-[#e2e8f0]">{f.name}</span>
+                {f.required === false && (
+                  <span className="text-[0.6rem] font-bold text-slate-600 uppercase">optional</span>
+                )}
+              </div>
+              <TypeDisplay type={f.type} />
             </div>
           ))}
         </div>
@@ -125,17 +126,11 @@ export default function MetadataPage() {
   if (!metadata) return null
 
   const mainMetadataPath = (() => {
-    const node = (nodes || []).find(n => n.type === FileType.MAIN_METADATA)
-    if (!node?.details) return null
-    const sections = node.details.split(UI_SECTION_NEWLINE)
-    for (let i = 1; i < sections.length; i++) {
-      const idx = sections[i].indexOf(':')
-      if (idx === -1) continue
-      if (sections[i].substring(0, idx).trim() === 'file_path')
-        return sections[i].substring(idx + 1).trim()
-    }
-    return null
-  })()
+    const node = (nodes || []).find(n => n.type === FileType.MAIN_METADATA);
+    if (!node?.details) return null;
+
+    return node.details.file_path ?? null;
+  })();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))
@@ -150,7 +145,7 @@ export default function MetadataPage() {
   const refs = metadata.refs ? Object.entries(metadata.refs) : []
 
   const lastUpdated = metadata['last-updated-ms']
-    ? new Date(metadata['last-updated-ms']).toLocaleString()
+    ? formatLocaleDateTime((new Date(metadata['last-updated-ms'])))
     : null
 
   return (

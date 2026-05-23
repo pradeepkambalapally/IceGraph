@@ -40,8 +40,6 @@ class TableInventory(SparkTableAction):
         self._start_snapshot_id = start_snapshot_id
         self._end_snapshot_id = end_snapshot_id
 
-        self._spark_tz = self._spark.conf.get("spark.sql.session.timeZone")
-
         self._errors: Dict[str, str] = {}
         self._warnings: Dict[str, str] = {}
 
@@ -82,7 +80,6 @@ class TableInventory(SparkTableAction):
         self._search_cutoff = find_search_cutoff(
             self._spark,
             self._table_name,
-            self._spark_tz,
             self._start_snapshot_id,
             self._end_snapshot_id,
         )

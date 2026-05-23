@@ -56,6 +56,7 @@ class CollectSnapshots(Collector):
             self._spark.sql(f"SELECT * FROM {self._table_name}.snapshots ORDER BY committed_at DESC")
             .filter(F.col("committed_at") >= F.lit(str(self._start_snapshot_cutoff)))
             .filter(F.col("committed_at") <= F.lit(str(self._end_snapshot_cutoff)))
+            .withColumn("committed_at", F.date_format("committed_at", "yyyy-MM-dd'T'HH:mm:ss.SSS"))
         )
 
     @staticmethod

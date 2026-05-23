@@ -1,21 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
-import { FileType, UI_NEWLINE, UI_SECTION_NEWLINE } from '../graphConstants'
-
-function parseDetails(details) {
-  if (!details) return {}
-  const sections = details.split(UI_SECTION_NEWLINE)
-  const result = {}
-  for (let i = 1; i < sections.length; i++) {
-    const raw = sections[i].trim()
-    const idx = raw.indexOf(':')
-    if (idx === -1) continue
-    const key = raw.substring(0, idx).trim()
-    const val = raw.substring(idx + 1).trim().replace(new RegExp(UI_NEWLINE, 'g'), '\n')
-    result[key] = val === 'None' || val === 'null' || val === '' ? null : val
-  }
-  return result
-}
+import { FileType } from '../graphConstants'
 
 const FILE_TYPES = new Set([FileType.DATA, FileType.POSITION_DELETE, FileType.EQUALITY_DELETE])
 
@@ -298,12 +283,11 @@ export default function FileTreePage() {
 
     const snaps = allNodes
       .filter(n => n.type === FileType.SNAPSHOT)
-      .map(n => ({ ...n, parsedDetails: parseDetails(n.details) }))
-      .sort((a, b) => new Date(a.parsedDetails.timestamp || 0) - new Date(b.parsedDetails.timestamp || 0))
+      .sort((a, b) => (a.details.timestamp || 0) - (b.details.timestamp || 0))
 
     const snapById = {}
     for (const s of snaps) {
-      if (s.parsedDetails.snapshot_id) snapById[s.parsedDetails.snapshot_id] = s
+      if (s.details.snapshot_id) snapById[s.details.snapshot_id] = s
     }
 
     const adj = {}
@@ -342,7 +326,7 @@ export default function FileTreePage() {
       const node = snapshotById[currentId]
       if (!node) break
       result.push(node)
-      currentId = node.parsedDetails.parent_id
+      currentId = node.details.parent_id
     }
     return result.reverse()
   }, [selectedBranch, branches, snapshots, snapshotById])
@@ -376,8 +360,7 @@ export default function FileTreePage() {
 
     const partMap = {}
     for (const f of dataFiles) {
-      const details = parseDetails(f.details)
-      const partition = details.partition || '(unpartitioned)'
+      const partition = f.details.partition || '(unpartitioned)'
       if (!partMap[partition]) partMap[partition] = []
       partMap[partition].push(f.id)
     }
@@ -500,9 +483,9 @@ export default function FileTreePage() {
                     <span className="text-[0.6rem] font-bold uppercase tracking-wider text-[#2E86C1]">latest</span>
                   )}
                 </span>
-                {currentSnapshot?.parsedDetails.snapshot_id && (
+                {currentSnapshot?.details.snapshot_id && (
                   <span className="text-xs font-mono text-slate-300">
-                    {currentSnapshot.parsedDetails.snapshot_id}
+                    {currentSnapshot.details.snapshot_id}
                   </span>
                 )}
               </span>
@@ -519,10 +502,10 @@ export default function FileTreePage() {
             ))}
           </Dropdown>
 
-          {currentSnapshot?.parsedDetails.snapshot_id && (
+          {currentSnapshot?.details.snapshot_id && (
             <button
               onClick={() => {
-                navigator.clipboard.writeText(currentSnapshot.parsedDetails.snapshot_id)
+                navigator.clipboard.writeText(currentSnapshot.details.snapshot_id)
                 setCopiedSnapshotId(true)
                 setTimeout(() => setCopiedSnapshotId(false), 2000)
               }}

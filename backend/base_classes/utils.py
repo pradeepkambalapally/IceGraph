@@ -50,5 +50,5 @@ def verify_iceberg_table(table_name: str) -> bool:
     raise AnalysisException(f"Table '{table_name}' is not an Iceberg table.")
 
 
-def to_arrow_tz(timestamp, timezone: str):
-    return arrow.get(timestamp).replace(tzinfo=timezone)
+def to_arrow_tz(timestamp):
+    return arrow.get(timestamp).replace(tzinfo="UTC")

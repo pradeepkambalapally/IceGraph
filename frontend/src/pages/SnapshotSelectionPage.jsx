@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { parseUtcDate, formatLocaleDateTime } from '../utils/dateUtils'
 
 function SnapshotItem({ ts, id, operation, selectedId, onClick }) {
     const isSelected = selectedId === id
@@ -128,10 +129,8 @@ export default function SnapshotSelectionPage() {
     const entries = Object.entries(snapshots)
         .sort((a, b) => b[0].localeCompare(a[0]))
         .map(([ts, val]) => {
-            const dateObj = new Date(ts);
-            const readableTs = !isNaN(dateObj.getTime())
-                ? dateObj.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
-                : ts;
+            const dateObj = parseUtcDate(ts);
+            const readableTs = dateObj ? formatLocaleDateTime(dateObj) : ts;
             return [readableTs, val.snapshot_id, val.operation];
         });
 

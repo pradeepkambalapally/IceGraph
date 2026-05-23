@@ -1,27 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { FileType, UI_NEWLINE, UI_SECTION_NEWLINE } from '../graphConstants'
+import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
+import { parseUtcDate } from '../utils/dateUtils'
 
 const COLOR_A = '#1964B9'
 const COLOR_B = '#6437D2'
 const COLOR_C = '#D97706'
 const COLOR_INIT = '#4a5568'
 
-function parseDetails(details) {
-  if (!details) return {}
-  const sections = details.split(UI_SECTION_NEWLINE)
-  const result = {}
-  for (let i = 1; i < sections.length; i++) {
-    const raw = sections[i].trim()
-    const idx = raw.indexOf(':')
-    if (idx === -1) continue
-    const key = raw.substring(0, idx).trim()
-    const val = raw.substring(idx + 1).trim().replace(new RegExp(UI_NEWLINE, 'g'), '\n')
-    result[key] = val === 'None' || val === 'null' || val === '' ? null : val
-  }
-  return result
-}
 
 function parseSummary(summary) {
   if (!summary) return []
@@ -39,7 +26,6 @@ function formatTs(tsStr) {
   if (!tsStr) return null
   try {
     const d = new Date(tsStr)
-    if (isNaN(d.getTime())) return null
     const ms = String(d.getMilliseconds()).padStart(3, '0')
     const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + `.${ms}`
     return {
@@ -47,7 +33,8 @@ function formatTs(tsStr) {
       time,
       full: `${d.toLocaleDateString()} ${time}`,
     }
-  } catch {
+  } catch (e) {
+    console.error(e)
     return null
   }
 }
@@ -71,7 +58,10 @@ function shortFileName(filePath) {
 }
 
 function formatDuration(tsA, tsB) {
-  const diff = Math.abs(new Date(tsA) - new Date(tsB))
+  const dA = parseUtcDate(tsA)
+  const dB = parseUtcDate(tsB)
+  if (!dA || !dB) return '—'
+  const diff = Math.abs(dA - dB)
   if (diff >= 86400000) return `${Math.round(diff / 86400000)}d`
   if (diff >= 3600000) return `${Math.round(diff / 3600000)}h`
   if (diff >= 60000) return `${Math.round(diff / 60000)}m`
@@ -213,7 +203,6 @@ export default function TimelinePage() {
 
     const metaNodes = allNodes
       .filter(n => n.type === FileType.METADATA || n.type === FileType.MAIN_METADATA)
-      .map(n => ({ details: parseDetails(n.details) }))
       .filter(n => n.details.timestamp)
       .sort((a, b) => new Date(a.details.timestamp) - new Date(b.details.timestamp))
 
@@ -221,7 +210,7 @@ export default function TimelinePage() {
     allNodes
       .filter(n => n.type === FileType.SNAPSHOT)
       .forEach(n => {
-        const d = parseDetails(n.details)
+        const d = n.details
         if (d.snapshot_id) snapMap[d.snapshot_id] = d
       })
 
@@ -240,7 +229,7 @@ export default function TimelinePage() {
         try {
           const currentRefs = JSONbig({ storeAsString: true }).parse(details.refs)
           const prevRefs = JSONbig({ storeAsString: true }).parse(prev.refs)
-          
+
           for (const key of Object.keys(prevRefs)) {
             if (currentRefs[key] && prevRefs[key]) {
               const currentSnapId = currentRefs[key]['snapshot-id']

@@ -83,6 +83,7 @@ class CollectMetadata(Collector):
             .select("file", "metadata_timestamp")
             .filter(F.col("metadata_timestamp") >= F.lit(str(self._start_metadata_cutoff)))
             .filter(F.col("metadata_timestamp") <= F.lit(str(self._end_metadata_cutoff)))
+            .withColumn("metadata_timestamp", F.date_format("metadata_timestamp", "yyyy-MM-dd'T'HH:mm:ss.SSS"))
         )
         return {row.file: row.metadata_timestamp for row in metadata_df.collect()}
 

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
-  UI_NEWLINE,
-  UI_SECTION_NEWLINE,
   GRAPH_SETTINGS,
   DELETED_DATA_FILE_CONNECTION_COLOR
 } from '../graphConstants'
@@ -405,22 +403,12 @@ export default function GraphPage() {
     return hl.has(s) && hl.has(t)
   }, [])
 
-  const parseStickyDetails = (details) => {
-    if (!details) return { title: '', rows: [] }
-    const splitToken = UI_SECTION_NEWLINE === '\n' ? /\\n|\n/ : UI_SECTION_NEWLINE
-    const lines = details.split(splitToken).map(l => l.replace(new RegExp(UI_NEWLINE, 'g'), '\n'))
-    const title = lines[0] || ''
-    const rows = []
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim()
-      const idx = line.indexOf(':')
-      if (idx === -1) continue
-      rows.push({ label: line.substring(0, idx), value: line.substring(idx + 1).trim() })
-    }
-    return { title, rows }
-  }
-
-  const sticky = stickyNode ? parseStickyDetails(stickyNode.details) : null
+  const sticky = stickyNode ? {
+    title: stickyNode.details.type, rows: Object.entries(stickyNode.details).map(([label, value]) => ({
+      label,
+      value
+    }))
+  } : null
 
   return (
     <div
