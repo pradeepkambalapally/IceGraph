@@ -493,7 +493,7 @@ export default function GraphPage() {
           style={{ borderLeftColor: stickyNode.color }}
         >
           <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[#2d3748]">
-            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title}</div>
+            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title.toUpperCase()}</div>
             <button
               className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition shrink-0"
               onClick={() => setStickyNode(null)}
@@ -507,7 +507,7 @@ export default function GraphPage() {
                 🔒 Locked View
               </span>
             )}
-            {sticky.rows.map((r, i) => <DetailRow key={i} r={r} />)}
+            {sticky.rows.filter((r) => r.value !== '').map((r, i) => <DetailRow key={i} r={r} />)}
           </div>
         </div>
       )}
