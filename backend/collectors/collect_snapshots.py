@@ -1,3 +1,4 @@
+from base_classes.utils import column_to_string_utc
 import os
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -56,7 +57,7 @@ class CollectSnapshots(Collector):
             self._spark.sql(f"SELECT * FROM {self._table_name}.snapshots ORDER BY committed_at DESC")
             .filter(F.col("committed_at") >= F.lit(str(self._start_snapshot_cutoff)))
             .filter(F.col("committed_at") <= F.lit(str(self._end_snapshot_cutoff)))
-            .withColumn("committed_at", F.date_format("committed_at", "yyyy-MM-dd'T'HH:mm:ss.SSS"))
+            .withColumn("committed_at", column_to_string_utc("committed_at"))
         )
 
     @staticmethod

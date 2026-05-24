@@ -1,3 +1,4 @@
+from base_classes.utils import column_to_string_utc
 import json
 from collections import defaultdict
 from dataclasses import dataclass
@@ -83,7 +84,7 @@ class CollectMetadata(Collector):
             .select("file", "metadata_timestamp")
             .filter(F.col("metadata_timestamp") >= F.lit(str(self._start_metadata_cutoff)))
             .filter(F.col("metadata_timestamp") <= F.lit(str(self._end_metadata_cutoff)))
-            .withColumn("metadata_timestamp", F.date_format("metadata_timestamp", "yyyy-MM-dd'T'HH:mm:ss.SSS"))
+            .withColumn("metadata_timestamp", column_to_string_utc("metadata_timestamp"))
         )
         return {row.file: row.metadata_timestamp for row in metadata_df.collect()}
 

@@ -1,7 +1,7 @@
 version: "3.8"
 
 # ─────────────────────────────────────────────────────────────────
-# IceGraph demo stack, time is set to UTC.
+# IceGraph demo stack.
 # Using HADOOP Catalog.
 # After all services are healthy (can take a couple of minutes), open http://localhost:5000 .
 # Creating 2 tables: default.logging, default.events .

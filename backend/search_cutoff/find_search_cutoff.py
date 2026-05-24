@@ -1,3 +1,4 @@
+from base_classes.utils import column_to_string_utc
 from dataclasses import dataclass, field
 from typing import NamedTuple, Optional
 
@@ -6,7 +7,7 @@ from pyspark.sql import DataFrame, SparkSession, functions as F
 from pyspark.sql.types import StringType, StructField, StructType
 
 from icegraph_logger import logger
-from base_classes.utils import timed, to_arrow_tz
+from base_classes.utils import timed, to_arrow_utc
 
 
 @dataclass
@@ -65,10 +66,10 @@ def _get_start_cutoffs(
     start_snapshot_id: int,
 ) -> StartCutoffs:
     row = spark.sql(f"""
-        SELECT date_format(committed_at, "yyyy-MM-dd'T'HH:mm:ss.SSS") AS committed_at, parent_id
+        SELECT committed_at, parent_id
         FROM {table_name}.snapshots
         WHERE snapshot_id = {start_snapshot_id}
-    """).first()
+    """).withColumn("committed_at", column_to_string_utc("committed_at")).first()
 
     if not row:
         return StartCutoffs(
@@ -77,15 +78,15 @@ def _get_start_cutoffs(
             manifests_to_ignore_df=_create_empty_manifests_to_ignore_df(spark),
         )
 
-    snapshot_cutoff = to_arrow_tz(row.committed_at)
+    snapshot_cutoff = to_arrow_utc(row.committed_at)
 
     meta_row = spark.sql(f"""
-        SELECT date_format(MIN(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
+        SELECT MIN(timestamp) AS ts
         FROM {table_name}.metadata_log_entries
         WHERE latest_snapshot_id = {start_snapshot_id}
-    """).first()
+    """).withColumn("ts", column_to_string_utc("ts")).first()
 
-    metadata_cutoff = to_arrow_tz(meta_row.ts) if meta_row and meta_row.ts else snapshot_cutoff
+    metadata_cutoff = to_arrow_utc(meta_row.ts) if meta_row and meta_row.ts else snapshot_cutoff
 
     manifests_to_ignore_df = _get_manifests_to_ignore_df(spark, table_name, row.parent_id)
 
@@ -102,10 +103,10 @@ def _get_end_cutoffs(
     end_snapshot_id: int,
 ) -> EndCutoffs:
     row = spark.sql(f"""
-        SELECT date_format(committed_at, "yyyy-MM-dd'T'HH:mm:ss.SSS") AS committed_at
+        SELECT committed_at
         FROM {table_name}.snapshots
         WHERE snapshot_id = {end_snapshot_id}
-    """).first()
+    """).withColumn("committed_at", column_to_string_utc("committed_at")).first()
 
     if not row:
         return EndCutoffs(
@@ -113,15 +114,15 @@ def _get_end_cutoffs(
             metadata_cutoff=arrow.Arrow.max,
         )
 
-    snapshot_cutoff = to_arrow_tz(row.committed_at)
+    snapshot_cutoff = to_arrow_utc(row.committed_at)
 
     meta_row = spark.sql(f"""
-        SELECT date_format(MAX(timestamp), "yyyy-MM-dd'T'HH:mm:ss.SSS") AS ts
+        SELECT MAX(timestamp) AS ts
         FROM {table_name}.metadata_log_entries
         WHERE latest_snapshot_id = {end_snapshot_id}
-    """).first()
+    """).withColumn("ts", column_to_string_utc("ts")).first()
 
-    metadata_cutoff = to_arrow_tz(meta_row.ts) if meta_row and meta_row.ts else snapshot_cutoff
+    metadata_cutoff = to_arrow_utc(meta_row.ts) if meta_row and meta_row.ts else snapshot_cutoff
 
     return EndCutoffs(
         snapshot_cutoff=snapshot_cutoff,

@@ -17,6 +17,8 @@ MAIN_BRANCH_ICEBERG_TABLE_NAME = "main"
 UI_SECTION_NEWLINE = "\x00"
 UI_NEWLINE = "\n"
 
+STANDART_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSSSSS"
+
 
 class FileType(Enum):
     MAIN_METADATA = "main_metadata"
