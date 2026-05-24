@@ -5,6 +5,7 @@ from contextlib import suppress
 
 import arrow
 from pyspark.errors import AnalysisException
+from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 
 from icegraph_logger import logger
@@ -52,3 +53,7 @@ def verify_iceberg_table(table_name: str) -> bool:
 
 def to_arrow_utc(timestamp):
     return arrow.get(timestamp).replace(tzinfo="UTC")
+
+
+def column_to_string_utc(column_name):
+    return F.date_format(F.col(column_name), "yyyy-MM-dd'T'HH:mm:ss.SSS")
