@@ -258,7 +258,7 @@ export default function NavBar() {
             </div>
             <div className="px-6 py-5 flex flex-col gap-4 text-sm text-slate-300">
               <p className="leading-relaxed">
-                <span className="font-semibold text-white">IceGraph</span> is an open-source tool for visualizing and exploring Apache Iceberg table metadata through an interactive graph interface.
+                <span className="font-semibold text-white">IceGraph</span> is an open source Apache Iceberg <span className="font-semibold text-white">debugging and visualization platform</span>. Trace production Iceberg tables through a graph based UI built for <span className="font-semibold text-white">debugging complex metadata states</span>, analyzing table evolution, and <span className="font-semibold text-white">learning how Iceberg works under the hood</span>.
               </p>
               <div className="border-t border-[#2d3748] pt-4 flex flex-col gap-2 text-xs">
                 <div className="flex items-center justify-between text-slate-400">
