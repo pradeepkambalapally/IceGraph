@@ -4,7 +4,7 @@
 
 # <p align="center">IceGraph</p>
 
-**IceGraph** provides an interactive, hierarchical view of **Apache Iceberg** metadata. It maps the DNA of your tables—from root metadata down to individual data and delete files.
+**IceGraph** is an interactive Apache Iceberg debugging and visualization platform that provides a hierarchical, graph-based view of Iceberg metadata. It maps the DNA of your production tables - helping engineers debug complex table states, trace metadata evolution, and understand Iceberg internals visually.
 
 Look at Live Demo! [https://yanivzalach.github.io/IceGraph/](https://yanivzalach.github.io/IceGraph/)
 
@@ -16,12 +16,11 @@ Look at Live Demo! [https://yanivzalach.github.io/IceGraph/](https://yanivzalach
 
 ## 🛠 Features
 
-* **Read-Only**: The application is read-only and does not modify the table.
-* **Time-Travel**: View the physical state of your table as of any `datetime`.
-* **Metadata Inspector**: Displaying record counts, stats, and file paths.
-* **Table History**: Trace every metadata evolution, from schema changes to snapshot writes, across the full lifetime of the table.
-* **Table File Browser**: See your table's files group by partition, just like you use to.
-* **Branches**: View all the branches of the table, even when detached from the main branch.
+* **Production-Safe & Read-Only** — Built for production Iceberg tables without modifying data or metadata.
+* **Graph-Based Visualization** — Explore metadata, snapshots, manifests, data files, and delete files through an interactive graph UI. For all your table branches.
+* **Snapshot & Metadata Lineage** — Trace table evolution, commits, schema changes, and snapshot history over time.
+* **Partition & File Browser** — Navigate partitions and files through a familiar hierarchical view.
+* **Debugging & Learning Tool** — Designed for both production debugging and understanding Iceberg internals.
 
 > **Recommended**: In production, use a user with read-only permissions for the Spark Connect server, for extra peace of mind.
 
