@@ -130,10 +130,19 @@ export default function GraphPage() {
   const stickyPanelRef = useRef(null)
   const stickyScrollTargetRef = useRef(0)
   const stickyScrollRafRef = useRef(null)
+  const popupListRef = useRef(null)
+  const popupScrollTargetRef = useRef(0)
+  const popupScrollRafRef = useRef(null)
 
   useEffect(() => { isInspectModeRef.current = isInspectMode }, [isInspectMode])
   useEffect(() => { highlightNodesRef.current = highlightNodes }, [highlightNodes])
-  useEffect(() => { movementPopupRef.current = movementPopup }, [movementPopup])
+  useEffect(() => {
+    movementPopupRef.current = movementPopup
+    if (!movementPopup) {
+      popupScrollTargetRef.current = 0
+      if (popupListRef.current) popupListRef.current.scrollTop = 0
+    }
+  }, [movementPopup])
 
   useEffect(() => {
     const handleResize = () => {
@@ -259,19 +268,21 @@ export default function GraphPage() {
       setMovementPopup({ nodes: neighbors, direction, combos, keyLen, input: '' })
     }
 
-    const scrollSticky = (delta) => {
-      const el = stickyPanelRef.current
+    const makeScroller = (targetRef, rafRef, elRef) => (delta) => {
+      const el = elRef.current
       if (!el) return
-      stickyScrollTargetRef.current = Math.max(0, Math.min(stickyScrollTargetRef.current + delta, el.scrollHeight - el.clientHeight))
-      if (stickyScrollRafRef.current) return
+      targetRef.current = Math.max(0, Math.min(targetRef.current + delta, el.scrollHeight - el.clientHeight))
+      if (rafRef.current) return
       const animate = () => {
-        const diff = stickyScrollTargetRef.current - el.scrollTop
-        if (Math.abs(diff) < 0.5) { el.scrollTop = stickyScrollTargetRef.current; stickyScrollRafRef.current = null; return }
+        const diff = targetRef.current - el.scrollTop
+        if (Math.abs(diff) < 0.5) { el.scrollTop = targetRef.current; rafRef.current = null; return }
         el.scrollTop += diff * 0.14
-        stickyScrollRafRef.current = requestAnimationFrame(animate)
+        rafRef.current = requestAnimationFrame(animate)
       }
-      stickyScrollRafRef.current = requestAnimationFrame(animate)
+      rafRef.current = requestAnimationFrame(animate)
     }
+    const scrollSticky = makeScroller(stickyScrollTargetRef, stickyScrollRafRef, stickyPanelRef)
+    const scrollPopup = makeScroller(popupScrollTargetRef, popupScrollRafRef, popupListRef)
 
     const handleKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -279,6 +290,12 @@ export default function GraphPage() {
       if (e.key === 'c') { resetZoom(); return }
       if (e.key === 'r') { resetView(); return }
 
+      if (movementPopupRef.current && (e.key === 'j' || e.key === 'ArrowDown')) {
+        e.preventDefault(); scrollPopup(80); return
+      }
+      if (movementPopupRef.current && (e.key === 'k' || e.key === 'ArrowUp')) {
+        e.preventDefault(); scrollPopup(-80); return
+      }
       if (stickyNodeRef.current && (e.key === 'j' || e.key === 'ArrowDown')) {
         e.preventDefault(); scrollSticky(80); return
       }
@@ -329,6 +346,7 @@ export default function GraphPage() {
     return () => {
       window.removeEventListener('keydown', handleKey)
       if (stickyScrollRafRef.current) cancelAnimationFrame(stickyScrollRafRef.current)
+      if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
     }
   }, [navigateTo, resetZoom, resetView])
 
@@ -619,7 +637,7 @@ export default function GraphPage() {
             <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-3">
               {movementPopup.direction === 'in' ? 'Navigate to parent' : 'Navigate to child'}
             </div>
-            <div className="flex flex-col max-h-[60vh] overflow-y-auto">
+            <div ref={popupListRef} className="flex flex-col max-h-[60vh] overflow-y-auto">
               {movementPopup.nodes.map((node, i) => {
                 const combo = movementPopup.combos[i]
                 const typed = movementPopup.input
