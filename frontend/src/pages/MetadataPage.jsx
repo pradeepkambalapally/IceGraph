@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileType } from '../graphConstants'
 import { formatLocaleDateTime } from '../utils/dateUtils'
@@ -122,6 +122,30 @@ function FieldRow({ field }) {
 export default function MetadataPage() {
   const { metadata, nodes } = useOutletContext()
   const [copied, setCopied] = useState(false)
+  const scrollTargetRef = useRef(0)
+  const rafRef = useRef(null)
+
+  useEffect(() => {
+    scrollTargetRef.current = window.scrollY
+    const animate = () => {
+      const diff = scrollTargetRef.current - window.scrollY
+      if (Math.abs(diff) < 0.5) { window.scrollTo(0, scrollTargetRef.current); rafRef.current = null; return }
+      window.scrollBy(0, diff * 0.14)
+      rafRef.current = requestAnimationFrame(animate)
+    }
+    const scroll = (delta) => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      scrollTargetRef.current = Math.max(0, Math.min(scrollTargetRef.current + delta, max))
+      if (!rafRef.current) rafRef.current = requestAnimationFrame(animate)
+    }
+    const handleKey = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) return
+      if (e.key === 'j') { e.preventDefault(); scroll(80) }
+      else if (e.key === 'k') { e.preventDefault(); scroll(-80) }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => { window.removeEventListener('keydown', handleKey); if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [])
 
   if (!metadata) return null
 

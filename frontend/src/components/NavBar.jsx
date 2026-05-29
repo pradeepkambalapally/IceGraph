@@ -32,6 +32,22 @@ export default function NavBar() {
 
   useEffect(() => { setMenuOpen(false) }, [location.pathname, location.search])
 
+  useEffect(() => {
+    if (!isTablePage) return
+    const handleKey = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) return
+      const tabs = ['graph', 'metadata', 'timeline', 'filetree']
+      const idx = parseInt(e.key) - 1
+      if (idx >= 0 && idx < tabs.length) {
+        e.preventDefault()
+        navigate(`/table/${tabs[idx]}${location.search}`)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isTablePage, navigate, location.search])
+
+
   const tabSearch = location.search
 
   const handleDuplicateTab = async () => {

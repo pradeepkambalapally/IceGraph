@@ -191,11 +191,68 @@ function DiffRow({ label, before, after }) {
 export default function TimelinePage() {
   const { nodes } = useOutletContext()
   const [selected, setSelected] = useState(null)
+  const selectedRef = useRef(null)
+  const eventsRef = useRef([])
+  const itemRefs = useRef([])
+  const popupScrollRef = useRef(null)
+  const popupScrollTargetRef = useRef(0)
+  const popupScrollRafRef = useRef(null)
 
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') setSelected(null) }
+    const animatePopupScroll = () => {
+      const el = popupScrollRef.current
+      if (!el) { popupScrollRafRef.current = null; return }
+      const diff = popupScrollTargetRef.current - el.scrollTop
+      if (Math.abs(diff) < 0.5) {
+        el.scrollTop = popupScrollTargetRef.current
+        popupScrollRafRef.current = null
+        return
+      }
+      el.scrollTop += diff * 0.14
+      popupScrollRafRef.current = requestAnimationFrame(animatePopupScroll)
+    }
+
+    const scrollPopup = (delta) => {
+      const el = popupScrollRef.current
+      if (!el) return
+      popupScrollTargetRef.current = Math.max(0, Math.min(popupScrollTargetRef.current + delta, el.scrollHeight - el.clientHeight))
+      if (!popupScrollRafRef.current) popupScrollRafRef.current = requestAnimationFrame(animatePopupScroll)
+    }
+
+    const handleKey = (e) => {
+      if (e.key === 'Escape') { setSelected(null); return }
+      if (selectedRef.current && (e.key === 'ArrowDown' || e.key === 'j')) {
+        e.preventDefault()
+        scrollPopup(80)
+        return
+      }
+      if (selectedRef.current && (e.key === 'ArrowUp' || e.key === 'k')) {
+        e.preventDefault()
+        scrollPopup(-80)
+        return
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'h') {
+        e.preventDefault()
+        const evts = eventsRef.current
+        if (!evts.length) return
+        const idx = evts.indexOf(selectedRef.current)
+        if (idx < 0) setSelected(evts[0])
+        else if (idx > 0) setSelected(evts[idx - 1])
+      }
+      if (e.key === 'ArrowRight' || e.key === 'l') {
+        e.preventDefault()
+        const evts = eventsRef.current
+        if (!evts.length) return
+        const idx = evts.indexOf(selectedRef.current)
+        if (idx < 0) setSelected(evts[evts.length - 1])
+        else if (idx < evts.length - 1) setSelected(evts[idx + 1])
+      }
+    }
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
+    }
   }, [])
 
   const { events, snapshotMap } = useMemo(() => {
@@ -269,6 +326,20 @@ export default function TimelinePage() {
     return { events: timeline, snapshotMap: snapMap }
   }, [nodes])
 
+  useEffect(() => {
+    selectedRef.current = selected
+    popupScrollTargetRef.current = 0
+    if (popupScrollRef.current) popupScrollRef.current.scrollTop = 0
+  }, [selected])
+  useEffect(() => { eventsRef.current = events }, [events])
+  useEffect(() => {
+    if (!selected) return
+    const idx = eventsRef.current.indexOf(selected)
+    if (idx >= 0 && itemRefs.current[idx]) {
+      itemRefs.current[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    }
+  }, [selected])
+
   if (events.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#0d1117]">
@@ -331,7 +402,7 @@ export default function TimelinePage() {
             const ts = formatTs(event.details.timestamp)
             const fileName = shortFileName(event.details.file_path)
             return (
-              <div key={i} className="flex items-center">
+              <div key={i} className="flex items-center" ref={el => { itemRefs.current[i] = el }}>
                 {i > 0 && (
                   <div className="flex flex-col items-center shrink-0">
                     <div className="text-[0.6rem] text-slate-500 mb-1">
@@ -362,8 +433,8 @@ export default function TimelinePage() {
                     </div>
                   </div>
                   <div
-                    className="w-11 h-11 rounded-full border-2 shadow-lg transition-transform group-hover:scale-110 shrink-0"
-                    style={{ backgroundColor: colorFor(event.type), borderColor: colorFor(event.type) }}
+                    className={`w-11 h-11 rounded-full border-2 shadow-lg transition-transform group-hover:scale-110 shrink-0 ${selected === event ? 'scale-110' : ''}`}
+                    style={{ backgroundColor: colorFor(event.type), borderColor: colorFor(event.type), ...(selected === event ? { outline: '2px solid white', outlineOffset: '3px' } : {}) }}
                   />
                   <div className="text-center max-w-[160px]">
                     {ts && (
@@ -412,7 +483,7 @@ export default function TimelinePage() {
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-5 flex flex-col gap-5">
+            <div ref={popupScrollRef} className="overflow-y-auto px-6 py-5 flex flex-col gap-5">
 
               {selected.type === 'A' && (
                 <>

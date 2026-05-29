@@ -113,12 +113,53 @@ export default function GraphPage() {
 
   const isInspectModeRef = useRef(isInspectMode)
   const highlightNodesRef = useRef(highlightNodes)
+  const stickyNodeRef = useRef(null)
+  const graphDataRef = useRef({ nodes: [], links: [] })
 
   useEffect(() => { isInspectModeRef.current = isInspectMode }, [isInspectMode])
   useEffect(() => { highlightNodesRef.current = highlightNodes }, [highlightNodes])
+  useEffect(() => { stickyNodeRef.current = stickyNode }, [stickyNode])
 
   useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') setStickyNode(null) }
+    const handleKey = (e) => {
+      if (e.key === 'Escape') { setStickyNode(null); return }
+      const dirMap = { h: 'left', ArrowLeft: 'left', l: 'right', ArrowRight: 'right', k: 'up', ArrowUp: 'up', j: 'down', ArrowDown: 'down' }
+      const dir = dirMap[e.key]
+      if (!dir) return
+      e.preventDefault()
+      const { nodes, links } = graphDataRef.current
+      if (!nodes.length) return
+      const current = stickyNodeRef.current
+      if (!current) {
+        const first = [...nodes].sort((a, b) => {
+          const dx = (a.fx ?? a.x ?? 0) - (b.fx ?? b.x ?? 0)
+          return dx !== 0 ? dx : (a.fy ?? a.y ?? 0) - (b.fy ?? b.y ?? 0)
+        })[0]
+        setStickyNode(first)
+        setHighlightNodes(getLineage(first.id, links))
+        setIsFullView(false)
+        fgRef.current?.centerAt(first.fx ?? first.x, first.fy ?? first.y, 300)
+        return
+      }
+      const cx = current.fx ?? current.x ?? 0
+      const cy = current.fy ?? current.y ?? 0
+      let candidates = nodes.filter(n => String(n.id) !== String(current.id))
+      if (dir === 'left') candidates = candidates.filter(n => (n.fx ?? n.x ?? 0) < cx - 10)
+      else if (dir === 'right') candidates = candidates.filter(n => (n.fx ?? n.x ?? 0) > cx + 10)
+      else if (dir === 'up') candidates = candidates.filter(n => (n.fy ?? n.y ?? 0) < cy - 10)
+      else if (dir === 'down') candidates = candidates.filter(n => (n.fy ?? n.y ?? 0) > cy + 10)
+      if (!candidates.length) return
+      candidates.sort((a, b) => {
+        const ax = a.fx ?? a.x ?? 0, ay = a.fy ?? a.y ?? 0
+        const bx = b.fx ?? b.x ?? 0, by = b.fy ?? b.y ?? 0
+        return ((ax - cx) ** 2 + (ay - cy) ** 2) - ((bx - cx) ** 2 + (by - cy) ** 2)
+      })
+      const next = candidates[0]
+      setStickyNode(next)
+      setHighlightNodes(getLineage(next.id, links))
+      setIsFullView(false)
+      fgRef.current?.centerAt(next.fx ?? next.x, next.fy ?? next.y, 300)
+    }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
@@ -177,6 +218,7 @@ export default function GraphPage() {
 
     return { nodes: processedNodes, links: processedLinks }
   }, [rawNodes, rawEdges])
+  useEffect(() => { graphDataRef.current = graphData }, [graphData])
 
   const resetZoom = useCallback(() => {
     graphData.nodes.forEach(node => {
