@@ -6,9 +6,9 @@ import {
   DELETED_DATA_FILE_CONNECTION_COLOR,
   FileType,
 } from '../graphConstants'
+import JSONbig from 'json-bigint'
 
 const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
-import JSONbig from 'json-bigint'
 
 const NODE_FONT_SIZE = 80
 const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
@@ -119,7 +119,7 @@ export default function GraphPage() {
   const highlightNodesRef = useRef(highlightNodes)
   const stickyNodeRef = useRef(null)
   const setStickyNode = useCallback((val) => {
-    const next = typeof val === 'function' ? val(stickyNodeRef.current) : val
+    const next = val
     stickyNodeRef.current = next
     if (next) sessionStorage.setItem('last_graph_selection', next.id)
     setStickyNodeInternal(next)
@@ -150,7 +150,7 @@ export default function GraphPage() {
   const graphData = useMemo(() => {
     if (!rawNodes) return { nodes: [], links: [] }
 
-    const nodeArray = rawNodes || []
+    const nodeArray = rawNodes
     const edgeArray = rawEdges || []
 
     const processedNodes = nodeArray.map(n => {
@@ -239,8 +239,6 @@ export default function GraphPage() {
 
   const resetView = useCallback(() => {
     deselectNode()
-
-    isResettingRef.current = true
     setIsFullView(true)
     sessionStorage.removeItem('last_graph_selection')
     resetZoom()
@@ -276,6 +274,7 @@ export default function GraphPage() {
     }
 
     const handleKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.key === 'i') { setIsInspectMode(p => !p); return }
       if (e.key === 'c') { resetZoom(); return }
       if (e.key === 'r') { resetView(); return }

@@ -35,6 +35,7 @@ export default function NavBar() {
   useEffect(() => {
     if (!isTablePage) return
     const handleKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) return
       const tabs = ['graph', 'metadata', 'timeline', 'filetree']
       const idx = parseInt(e.key) - 1

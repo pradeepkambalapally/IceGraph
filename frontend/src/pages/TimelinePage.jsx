@@ -220,6 +220,7 @@ export default function TimelinePage() {
     }
 
     const handleKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.key === 'Escape') { setSelected(null); return }
       if (selectedRef.current && (e.key === 'ArrowDown' || e.key === 'j')) {
         e.preventDefault()
