@@ -8,6 +8,7 @@ import TableLayout from './pages/TableLayout'
 import NavBar from './components/NavBar'
 import { TableSpecsProvider } from './context/TableSpecsContext'
 import SnapshotSelectionPage from './pages/SnapshotSelectionPage'
+import DocsPage from './pages/DocsPage'
 
 function Layout({ children }) {
   return (
@@ -35,6 +36,7 @@ export default function App() {
             ? <Navigate to="/table/graph?table=default.events" replace />
             : <Layout><SnapshotSelectionPage /></Layout>
         } />
+        <Route path="/docs" element={<Layout><DocsPage /></Layout>} />
         <Route
           path="/table"
           element={

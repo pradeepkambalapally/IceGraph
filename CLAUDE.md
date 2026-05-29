@@ -9,6 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Apply DRY principles where possible.
 - Python files must not exceed 400 lines.
 - Never run git commands — only the user does.
+- When a change affects the user interface (behavior, navigation, interactions, views), update the relevant section in `frontend/src/pages/DocsPage.jsx`.
+- The Issues panel content (errors and warnings) is driven entirely by the backend response (`data.errors`, `data.warnings`). UI changes to this panel must be coordinated with backend error/warning emission logic.
 
 ## Project Overview
 

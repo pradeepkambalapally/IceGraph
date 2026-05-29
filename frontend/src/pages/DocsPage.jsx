@@ -1,0 +1,360 @@
+import { useState, useRef, useEffect } from 'react'
+
+function Key({ k }) {
+  return (
+    <kbd className="bg-[#252d3d] border border-[#3d4a5c] text-[#7dd3fc] text-xs font-mono px-2 py-0.5 rounded">
+      {k}
+    </kbd>
+  )
+}
+
+function ShortcutRow({ keys, desc }) {
+  return (
+    <div className="flex items-center gap-3 py-1.5 border-b border-[#1e2736]">
+      <div className="flex items-center gap-1 shrink-0 min-w-[6rem]">
+        {keys.map((k, i) => (
+          <span key={i} className="flex items-center gap-1">
+            {i > 0 && <span className="text-slate-600 text-xs">/</span>}
+            <Key k={k} />
+          </span>
+        ))}
+      </div>
+      <span className="text-slate-300 text-sm">{desc}</span>
+    </div>
+  )
+}
+
+const SECTIONS = [
+  {
+    id: 'overview',
+    title: 'Overview',
+    body: (
+      <div className="space-y-4">
+        <p>
+          IceGraph lets you explore Apache Iceberg tables visually. It reads your table's metadata
+          and renders it as an interactive graph so you can trace how the table evolved over time,
+          understand its structure, and debug unexpected states.
+        </p>
+        <p>
+          Everything is <strong className="text-white">read-only</strong>.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'loading-a-table',
+    title: 'Loading a Table',
+    body: (
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">1. Enter the table name</h3>
+          <p>
+            From the Home page, type the fully-qualified name of your Iceberg table
+            (e.g. <code className="bg-[#252d3d] px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Load.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">2. Pick a snapshot range</h3>
+          <p>
+            IceGraph shows you the table's snapshot history. Select the range of snapshots you want
+            to explore. A smaller range loads faster and produces a less cluttered graph.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">3. Wait for the graph</h3>
+          <p>
+            IceGraph fetches the metadata in the background. Once ready, you land on the Graph view.
+            Large ranges with many data files may take a moment.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'graph-view',
+    title: 'Graph View',
+    body: (
+      <div className="space-y-5">
+        <p>
+          The Graph view shows all Iceberg metadata objects in your selected range as a directed acyclic graph. Each node is a file. Links show parent→child relationships.
+        </p>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Node types</h3>
+          <ul className="list-disc list-inside space-y-2">
+            <li><strong className="text-white">Metadata file</strong> — JSON file describing the current full state of the table, combining schema, partition spec, snapshot history, and data file references</li>
+            <li><strong className="text-white">Snapshot</strong> — Avro file that represents a point-in-time version of the table produced by a data operation (append, overwrite, etc.)</li>
+            <li><strong className="text-white">Manifest</strong> — tracks which data files exist and stores per-file statistics</li>
+            <li><strong className="text-white">Data file</strong> — the actual Parquet, ORC, or Avro file containing your rows</li>
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Interactions</h3>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Click a node to select it and inspect its details in the side panel</li>
+            <li>Drag a node to reposition it</li>
+            <li>Scroll to zoom, drag the background to pan</li>
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Reading the graph</h3>
+          <p>
+            Nodes shared across multiple snapshots mean Iceberg reused those files — data that didn't
+            change is never rewritten. Seeing many shared data files between snapshots is normal and
+            efficient. A snapshot with no shared manifests or data files means a full overwrite occurred.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'metadata-view',
+    title: 'Metadata View',
+    body: (
+      <div className="space-y-4">
+        <p>
+          Shows the structured metadata of your table — schema, partition spec, and sort order. Use this
+          to verify column types, understand partition strategies, and inspect how the schema has evolved.
+        </p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>Column IDs are stable even when columns are renamed — useful for tracing schema evolution</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'timeline-view',
+    title: 'Timeline View',
+    body: (
+      <div className="space-y-4">
+        <p>
+          A chronological list of every snapshot in your selected range. Each row shows when the
+          snapshot was created, what operation produced it, and how many files and records changed.
+        </p>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Operation types</h3>
+          <ul className="list-disc list-inside space-y-2">
+            <li><strong className="text-white">append</strong> — new data was added to the table</li>
+            <li><strong className="text-white">overwrite</strong> — new data was written, and any existing data in the affected partitions was replaced</li>
+            <li><strong className="text-white">replace</strong> — files were rewritten (e.g. compaction) without changing the actual records; common in Iceberg maintenance procedures</li>
+            <li><strong className="text-white">delete</strong> — rows or files were removed from the table</li>
+          </ul>
+        </div>
+        <p>
+          Use the Timeline to pinpoint when a large write happened, spot unexpected deletes, or
+          verify that a compaction job ran as expected.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'filetree-view',
+    title: 'FileTree View',
+    body: (
+      <div className="space-y-4">
+        <p>
+          Shows all data files in your selected snapshot range organized as a directory tree, grouped
+          by their partition paths.
+        </p>
+        <p>
+          This view solves a common source of confusion: if you look at the <strong className="text-white">raw storage directory</strong> written
+          by your engine (Spark, for example), you see all files ever written — including files from
+          old snapshots that have since been replaced, and files that belong to different table versions.
+        </p>
+        <p>
+          <strong className="text-white">What's on disk is not the same as what Iceberg considers the current table.</strong> The
+          FileTree view shows only the files Iceberg actually tracks as part of the selected snapshots,
+          giving you a true picture of the table's data.
+        </p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>Expand directories to see individual files</li>
+          <li>Choose a branch, and within it, a snapshot to explore</li>
+          <li>Many small files in one partition path often indicates a small-file problem</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'specs-panel',
+    title: 'Specs Panel',
+    body: (
+      <div className="space-y-4">
+        <p>
+          The <strong className="text-white">Specs</strong> button in the navbar opens the Table
+          Specification panel, which shows the full history of your table's structural definitions
+          across three sections:
+        </p>
+        <ul className="list-disc list-inside space-y-2">
+          <li><strong className="text-white">Schema History</strong> — every schema version the table has had, showing each by its schema ID</li>
+          <li><strong className="text-white">Partition History</strong> — every partition spec version, showing each by its spec ID</li>
+          <li><strong className="text-white">Order History</strong> — every sort order version, showing each by its order ID</li>
+        </ul>
+        <p>
+          The currently active version in each section is highlighted with an{' '}
+          <strong className="text-white">ACTIVE</strong> badge. Click any version to expand its full
+          definition as JSON — useful for comparing how a schema or partition strategy changed over time.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'issues-panel',
+    title: 'Issues Panel',
+    body: (
+      <div className="space-y-4">
+        <p>
+          When the backend reports problems during metadata collection, an{' '}
+          <strong className="text-white">Issues</strong> button appears in the navbar. There are two
+          severity levels:
+        </p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-red-400 font-semibold">Critical Errors</h3>
+            <p>
+              Something failed while reading the table's metadata — for example, a file could not
+              be accessed or the backend encountered an unexpected state. The graph may be incomplete
+              or missing sections entirely.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-amber-400 font-semibold">Warnings</h3>
+            <p>
+              Your request exceeded the allowed data file limit. The backend stopped collecting data
+              files at the configured maximum, so the graph represents a partial view of the table.
+              The snapshot and manifest structure is still complete; only data file coverage is capped.
+            </p>
+          </div>
+        </div>
+        <p>
+          The panel opens automatically when the backend reports any issue. Even so, always check it
+          when the graph looks incomplete or the data file count seems lower than expected.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'keyboard-shortcuts',
+    title: 'Keyboard Shortcuts',
+    body: (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h3 className="text-white font-semibold mb-2">Global</h3>
+          <ShortcutRow keys={['1']} desc="Go to Graph view" />
+          <ShortcutRow keys={['2']} desc="Go to Metadata view" />
+          <ShortcutRow keys={['3']} desc="Go to Timeline view" />
+          <ShortcutRow keys={['4']} desc="Go to FileTree view" />
+        </div>
+
+        <p className="text-slate-400 text-xs">
+          Throughout the app, <Key k="j" /> / <Key k="↓" /> and <Key k="k" /> / <Key k="↑" /> scroll the active panel or list.
+        </p>
+
+        <div className="space-y-1">
+          <h3 className="text-white font-semibold mb-2">Graph View</h3>
+          <ShortcutRow keys={['c']} desc="Center and zoom to fit the entire graph" />
+          <ShortcutRow keys={['r']} desc="Reset view to initial state" />
+          <ShortcutRow keys={['i']} desc="Toggle inspect mode (disables keyboard navigation so you can interact freely with the graph)" />
+          <ShortcutRow keys={['Enter', 'Space']} desc="Jump to the main metadata node" />
+          <ShortcutRow keys={['h', '←']} desc="Navigate to the selected node's parent(s)" />
+          <ShortcutRow keys={['l', '→']} desc="Navigate to the selected node's child(ren)" />
+          <ShortcutRow keys={['j', '↓']} desc="Scroll down" />
+          <ShortcutRow keys={['k', '↑']} desc="Scroll up" />
+          <ShortcutRow keys={['Esc']} desc="Deselect the current node" />
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="text-white font-semibold mb-2">Metadata View</h3>
+          <ShortcutRow keys={['j', '↓']} desc="Scroll the page down" />
+          <ShortcutRow keys={['k', '↑']} desc="Scroll the page up" />
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="text-white font-semibold mb-2">Timeline View</h3>
+          <ShortcutRow keys={['h', '←']} desc="Select the previous snapshot — if none is selected, jumps to the first (oldest)" />
+          <ShortcutRow keys={['l', '→']} desc="Select the next snapshot — if none is selected, jumps to the last (newest)" />
+          <ShortcutRow keys={['j', '↓']} desc="Scroll the snapshot details panel down" />
+          <ShortcutRow keys={['k', '↑']} desc="Scroll the snapshot details panel up" />
+          <ShortcutRow keys={['Esc']} desc="Close the snapshot details panel" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'tips',
+    title: 'Tips & Tricks',
+    body: (
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Start with a narrow snapshot range</h3>
+          <p>
+            Loading all snapshots at once produces an overwhelming graph. Start with the 2–7 most
+            recent snapshots and expand only if you need more history.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Duplicate tab for side-by-side comparison</h3>
+          <p>
+            Use the <strong className="text-white">Duplicate tab</strong> button in the navbar to open
+            the current view in a new browser tab using cached data — no extra backend request. Load a
+            different snapshot range in the original tab to compare two states of the same table.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+]
+
+export default function DocsPage() {
+  const [active, setActive] = useState(SECTIONS[0].id)
+  const contentRef = useRef(null)
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0
+  }, [active])
+
+  const activeSection = SECTIONS.find(s => s.id === active)
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      <aside className="w-52 shrink-0 bg-[#151b26] border-r border-[#2d3748] overflow-y-auto hidden sm:block">
+        <div className="px-4 py-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Documentation</p>
+          <nav className="flex flex-col gap-0.5">
+            {SECTIONS.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setActive(s.id)}
+                className={`text-left text-sm px-3 py-2 rounded-md transition ${active === s.id
+                  ? 'bg-[#1e3a5f] text-white font-medium'
+                  : 'text-slate-400 hover:text-white hover:bg-[#252d3d]'
+                  }`}
+              >
+                {s.title}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      <div className="flex-1 overflow-y-auto" ref={contentRef}>
+        <div className="sm:hidden px-4 pt-4 pb-2">
+          <select
+            value={active}
+            onChange={e => setActive(e.target.value)}
+            className="w-full bg-[#252d3d] text-white text-sm border border-[#2d3748] rounded-md px-3 py-2"
+          >
+            {SECTIONS.map(s => (
+              <option key={s.id} value={s.id}>{s.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-6 py-8">
+          <h1 className="text-2xl font-bold text-white mb-6">{activeSection.title}</h1>
+          <div className="text-slate-300 text-sm leading-relaxed">
+            {activeSection.body}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

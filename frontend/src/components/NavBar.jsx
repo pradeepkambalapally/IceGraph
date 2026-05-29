@@ -102,9 +102,14 @@ export default function NavBar() {
           </div>
 
           {!isTablePage && (
-            <NavLink to="/" end className={tabClass}>
-              Home
-            </NavLink>
+            <>
+              <NavLink to="/" end className={tabClass}>
+                Home
+              </NavLink>
+              <NavLink to="/docs" className={tabClass}>
+                Docs
+              </NavLink>
+            </>
           )}
 
           {isTablePage && (
@@ -162,9 +167,18 @@ export default function NavBar() {
 
                 <div className="w-px h-4 bg-slate-700" />
 
+                <NavLink
+                  to="/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 px-3 py-1 rounded-md transition"
+                >
+                  Docs
+                </NavLink>
+
                 <button
                   className="text-sm font-medium text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 px-3 py-1 rounded-md transition"
-                  onClick={() => navigate('/')}
+                  onClick={() => window.open('/', '_blank')}
                 >
                   ← Home
                 </button>
@@ -242,9 +256,19 @@ export default function NavBar() {
               {isDuplicating ? 'Duplicating...' : 'Duplicate tab'}
             </button>
 
+            <NavLink
+              to="/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMenuOpen(false)}
+              className="text-sm font-medium text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 px-3 py-2 rounded-md transition text-left"
+            >
+              Docs
+            </NavLink>
+
             <button
               className="text-sm font-medium text-slate-400 hover:text-white border border-slate-600 hover:border-slate-400 px-3 py-2 rounded-md transition text-left"
-              onClick={() => { navigate('/'); setMenuOpen(false) }}
+              onClick={() => { window.open('/', '_blank'); setMenuOpen(false) }}
             >
               ← Home
             </button>
