@@ -31,6 +31,16 @@ export default function SnapshotSelectionPage() {
 
     const startListRef = useRef(null)
     const endListRef = useRef(null)
+    const submitBtnRef = useRef(null)
+
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.key === 'Enter' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))
+                submitBtnRef.current?.click()
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [])
 
     const [snapshots, setSnapshots] = useState({})
     const [startSnapshot, setStartSnapshot] = useState('')
@@ -185,7 +195,7 @@ export default function SnapshotSelectionPage() {
                             </div>
                         </div>
                     </div>
-                    <button type="submit" className="w-full bg-[#2E86C1] hover:bg-[#2471a3] py-3 rounded-lg text-white font-bold transition-colors">
+                    <button ref={submitBtnRef} type="submit" className="w-full bg-[#2E86C1] hover:bg-[#2471a3] py-3 rounded-lg text-white font-bold transition-colors">
                         Generate Graph
                     </button>
                 </form>

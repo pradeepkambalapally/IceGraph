@@ -3,9 +3,12 @@ import { useLocation, useOutletContext } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
   GRAPH_SETTINGS,
-  DELETED_DATA_FILE_CONNECTION_COLOR
+  DELETED_DATA_FILE_CONNECTION_COLOR,
+  FileType,
 } from '../graphConstants'
 import JSONbig from 'json-bigint'
+
+const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
 
 const NODE_FONT_SIZE = 80
 const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
@@ -104,7 +107,8 @@ export default function GraphPage() {
   const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [isInspectMode, setIsInspectMode] = useState(true)
   const [isFullView, setIsFullView] = useState(true)
-  const [stickyNode, setStickyNode] = useState(null)
+  const [stickyNode, setStickyNodeInternal] = useState(null)
+  const [movementPopup, setMovementPopup] = useState(null)
 
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
@@ -113,15 +117,23 @@ export default function GraphPage() {
 
   const isInspectModeRef = useRef(isInspectMode)
   const highlightNodesRef = useRef(highlightNodes)
+  const stickyNodeRef = useRef(null)
+  const setStickyNode = useCallback((val) => {
+    const next = val
+    stickyNodeRef.current = next
+    if (next) sessionStorage.setItem('last_graph_selection', next.id)
+    setStickyNodeInternal(next)
+  }, [])
+  const graphDataRef = useRef({ nodes: [], links: [] })
+  const treeMapRef = useRef({ incoming: {}, outgoing: {} })
+  const movementPopupRef = useRef(null)
+  const stickyPanelRef = useRef(null)
+  const stickyScrollTargetRef = useRef(0)
+  const stickyScrollRafRef = useRef(null)
 
   useEffect(() => { isInspectModeRef.current = isInspectMode }, [isInspectMode])
   useEffect(() => { highlightNodesRef.current = highlightNodes }, [highlightNodes])
-
-  useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') setStickyNode(null) }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  useEffect(() => { movementPopupRef.current = movementPopup }, [movementPopup])
 
   useEffect(() => {
     const handleResize = () => {
@@ -138,7 +150,7 @@ export default function GraphPage() {
   const graphData = useMemo(() => {
     if (!rawNodes) return { nodes: [], links: [] }
 
-    const nodeArray = rawNodes || []
+    const nodeArray = rawNodes
     const edgeArray = rawEdges || []
 
     const processedNodes = nodeArray.map(n => {
@@ -177,6 +189,22 @@ export default function GraphPage() {
 
     return { nodes: processedNodes, links: processedLinks }
   }, [rawNodes, rawEdges])
+  useEffect(() => { graphDataRef.current = graphData }, [graphData])
+
+  const treeMap = useMemo(() => {
+    const incoming = {}
+    const outgoing = {}
+      ; (rawEdges || []).forEach(e => {
+        const src = String(e.from)
+        const tgt = String(e.to)
+        if (!outgoing[src]) outgoing[src] = []
+        if (!incoming[tgt]) incoming[tgt] = []
+        outgoing[src].push(tgt)
+        incoming[tgt].push(src)
+      })
+    return { incoming, outgoing }
+  }, [rawEdges])
+  useEffect(() => { treeMapRef.current = treeMap }, [treeMap])
 
   const resetZoom = useCallback(() => {
     graphData.nodes.forEach(node => {
@@ -193,6 +221,16 @@ export default function GraphPage() {
     setTimeout(() => { isResettingRef.current = false }, 700)
   }, [graphData])
 
+  const navigateTo = useCallback((node) => {
+    setStickyNode(node)
+    setHighlightNodes(getLineage(node.id, graphDataRef.current.links))
+    setIsFullView(false)
+    fgRef.current?.centerAt(node.fx ?? node.x, node.fy ?? node.y, 300)
+    history.pushState({ graphSelection: node.id }, '')
+    stickyScrollTargetRef.current = 0
+    if (stickyPanelRef.current) stickyPanelRef.current.scrollTop = 0
+  }, [])
+
   const deselectNode = useCallback(() => {
     setHighlightNodes(new Set())
     setStickyNode(null)
@@ -201,12 +239,98 @@ export default function GraphPage() {
 
   const resetView = useCallback(() => {
     deselectNode()
-
-    isResettingRef.current = true
     setIsFullView(true)
     sessionStorage.removeItem('last_graph_selection')
     resetZoom()
   }, [deselectNode, resetZoom])
+
+  useEffect(() => {
+    const goToNeighbors = (neighborIds, direction) => {
+      const { nodes } = graphDataRef.current
+      const neighbors = neighborIds.map(id => nodes.find(n => String(n.id) === String(id))).filter(Boolean)
+      if (!neighbors.length) return
+      if (neighbors.length === 1) { navigateTo(neighbors[0]); return }
+      const keyLen = Math.floor(neighbors.length / POPUP_KEYS.length) + 1
+      const combos = neighbors.map((_, i) => {
+        let combo = '', num = i
+        for (let k = 0; k < keyLen; k++) { combo = POPUP_KEYS[num % POPUP_KEYS.length] + combo; num = Math.floor(num / POPUP_KEYS.length) }
+        return combo
+      })
+      setMovementPopup({ nodes: neighbors, direction, combos, keyLen, input: '' })
+    }
+
+    const scrollSticky = (delta) => {
+      const el = stickyPanelRef.current
+      if (!el) return
+      stickyScrollTargetRef.current = Math.max(0, Math.min(stickyScrollTargetRef.current + delta, el.scrollHeight - el.clientHeight))
+      if (stickyScrollRafRef.current) return
+      const animate = () => {
+        const diff = stickyScrollTargetRef.current - el.scrollTop
+        if (Math.abs(diff) < 0.5) { el.scrollTop = stickyScrollTargetRef.current; stickyScrollRafRef.current = null; return }
+        el.scrollTop += diff * 0.14
+        stickyScrollRafRef.current = requestAnimationFrame(animate)
+      }
+      stickyScrollRafRef.current = requestAnimationFrame(animate)
+    }
+
+    const handleKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key === 'i') { setIsInspectMode(p => !p); return }
+      if (e.key === 'c') { resetZoom(); return }
+      if (e.key === 'r') { resetView(); return }
+
+      if (stickyNodeRef.current && (e.key === 'j' || e.key === 'ArrowDown')) {
+        e.preventDefault(); scrollSticky(80); return
+      }
+      if (stickyNodeRef.current && (e.key === 'k' || e.key === 'ArrowUp')) {
+        e.preventDefault(); scrollSticky(-80); return
+      }
+
+      if (movementPopupRef.current) {
+        if (e.key === 'Escape') { setMovementPopup(null); return }
+        const popup = movementPopupRef.current
+        const char = e.key.toLowerCase()
+        if (!POPUP_KEYS.includes(char)) return
+        const newInput = popup.input + char
+        if (newInput.length === popup.keyLen) {
+          const idx = popup.combos.indexOf(newInput)
+          if (idx >= 0) { navigateTo(popup.nodes[idx]); setMovementPopup(null) }
+          else setMovementPopup({ ...popup, input: '' })
+        } else {
+          setMovementPopup({ ...popup, input: newInput })
+        }
+        return
+      }
+
+      if (e.key === 'Escape') { setStickyNode(null); return }
+
+      if (isInspectModeRef.current) return
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (stickyNodeRef.current) return
+        const mainMeta = graphDataRef.current.nodes.find(n => n.type === FileType.MAIN_METADATA)
+        if (mainMeta) navigateTo(mainMeta)
+        return
+      }
+      if (e.key === 'h' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        if (!stickyNodeRef.current) return
+        goToNeighbors(treeMapRef.current.incoming[String(stickyNodeRef.current.id)] || [], 'in')
+        return
+      }
+      if (e.key === 'l' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        if (!stickyNodeRef.current) return
+        goToNeighbors(treeMapRef.current.outgoing[String(stickyNodeRef.current.id)] || [], 'out')
+        return
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      if (stickyScrollRafRef.current) cancelAnimationFrame(stickyScrollRafRef.current)
+    }
+  }, [navigateTo, resetZoom, resetView])
 
   useEffect(() => {
     if (!history.state || !('graphSelection' in history.state)) {
@@ -290,7 +414,6 @@ export default function GraphPage() {
 
   const handleNodeClick = useCallback((node) => {
     if (!isInspectModeRef.current) {
-      sessionStorage.setItem('last_graph_selection', node.id)
       const lineage = getLineage(node.id, graphData.links)
       setHighlightNodes(lineage)
       setIsFullView(false)
@@ -459,6 +582,7 @@ export default function GraphPage() {
               : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
             }`}
           onClick={() => !isFullView && resetView()}
+          onMouseDown={e => e.preventDefault()}
         >
           Reset Full View
         </button>
@@ -470,6 +594,7 @@ export default function GraphPage() {
               : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
             }`}
           onClick={() => setIsInspectMode(p => !p)}
+          onMouseDown={e => e.preventDefault()}
         >
           <span className="w-9 flex items-center justify-center text-lg bg-black/5 shrink-0 py-2.5">
             {isInspectMode ? '🔒' : '🔍'}
@@ -482,13 +607,50 @@ export default function GraphPage() {
         <button
           className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]"
           onClick={() => resetZoom()}
+          onMouseDown={e => e.preventDefault()}
         >
           Center Graph
         </button>
       </div>
 
+      {movementPopup && (
+        <div className="absolute inset-0 flex items-center justify-center z-[1100] pointer-events-none">
+          <div className="bg-[#1a202c]/57 backdrop-blur-md border border-[#2d3748] rounded-xl shadow-2xl p-4 pointer-events-auto w-[70vw] font-sans">
+            <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-3">
+              {movementPopup.direction === 'in' ? 'Navigate to parent' : 'Navigate to child'}
+            </div>
+            <div className="flex flex-col max-h-[60vh] overflow-y-auto">
+              {movementPopup.nodes.map((node, i) => {
+                const combo = movementPopup.combos[i]
+                const typed = movementPopup.input
+                return (
+                  <button
+                    key={node.id}
+                    onClick={() => { navigateTo(node); setMovementPopup(null) }}
+                    className="flex items-center gap-3 py-2 px-2 border-b border-[#2d3748] last:border-0 hover:bg-[#252d3d] rounded transition cursor-pointer text-left"
+                  >
+                    <span className="rounded bg-[#0d1117] text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-[#2d3748]">
+                      <span className="text-[#2E86C1]">{combo.slice(0, typed.length)}</span>
+                      <span className="text-slate-400">{combo.slice(typed.length)}</span>
+                    </span>
+                    <span className="text-sm text-[#e2e8f0] font-mono">{node.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {movementPopup.keyLen > 1 && (
+              <div className="mt-3 font-mono text-sm text-center text-slate-300 tracking-widest min-h-[1.5em]">
+                {movementPopup.input || <span className="text-slate-600">type combo…</span>}
+              </div>
+            )}
+            <div className="text-xs text-slate-400 mt-2">Type combo to select · Esc to cancel</div>
+          </div>
+        </div>
+      )}
+
       {sticky && (
         <div
+          ref={stickyPanelRef}
           className="absolute top-4 right-4 w-[400px] max-h-[88vh] overflow-y-auto bg-[#1a202c] border-l-4 rounded-xl z-[1000] shadow-xl"
           style={{ borderLeftColor: stickyNode.color }}
         >
@@ -497,6 +659,7 @@ export default function GraphPage() {
             <button
               className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition shrink-0"
               onClick={() => setStickyNode(null)}
+              onMouseDown={e => e.preventDefault()}
             >
               ✕
             </button>
