@@ -305,7 +305,7 @@ export default function TableLayout() {
       label = `Schema ID: ${id}`
     } else if (type === 'spec') {
       data = metadata['partition-specs']?.find(s => s['spec-id'] === id)
-      label = `Spec ID: ${id}`
+      label = `Partition ID: ${id}`
     } else if (type === 'order') {
       data = metadata['sort-orders']?.find(s => s['order-id'] === id)
       label = `Order ID: ${id}`
