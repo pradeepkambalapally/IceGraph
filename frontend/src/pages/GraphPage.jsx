@@ -647,9 +647,9 @@ export default function GraphPage() {
                     onClick={() => { navigateTo(node); setMovementPopup(null) }}
                     className="flex items-center gap-3 py-2 px-2 border-b border-[#2d3748] last:border-0 hover:bg-[#252d3d] rounded transition cursor-pointer text-left"
                   >
-                    <span className="rounded bg-[#0d1117] text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-[#2d3748]">
-                      <span className="text-[#2E86C1]">{combo.slice(0, typed.length)}</span>
-                      <span className="text-slate-400">{combo.slice(typed.length)}</span>
+                    <span className="rounded bg-[#2E86C1]/35 text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-[#2E86C1]">
+                      <span className="text-white">{combo.slice(0, typed.length)}</span>
+                      <span className="text-white">{combo.slice(typed.length)}</span>
                     </span>
                     <span className="text-sm text-[#e2e8f0] font-mono">{node.label}</span>
                   </button>
