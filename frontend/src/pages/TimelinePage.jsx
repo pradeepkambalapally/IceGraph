@@ -544,8 +544,8 @@ export default function TimelinePage() {
 
                   <div className="mt-4 border-t border-[#2d3748] pt-4">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
-                    {selected.diff.length > 0
-                      ? selected.diff.map(({ key, before, after }) => (
+                    {selected.diff.filter(({ key }) => key !== 'type').length > 0
+                      ? selected.diff.filter(({ key }) => key !== 'type').map(({ key, before, after }) => (
                         <DiffRow key={key} label={key} before={before} after={after} />
                       ))
                       : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
