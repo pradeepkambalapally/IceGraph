@@ -169,6 +169,8 @@ const SECTIONS = [
           <li>Expand directories to see individual files</li>
           <li>Choose a branch, and within it, a snapshot to explore</li>
           <li>Many small files in one partition path often indicates a small-file problem</li>
+          <li>Each file shows its <strong className="text-white">first appearing timestamp</strong> tracked by Iceberg in the <strong className="text-white">asked snapshot range</strong></li>
+          <li>Each folder shows a <strong className="text-white">last modified</strong> timestamp — the most recent first-appearing timestamp among all its files</li>
         </ul>
       </div>
     ),

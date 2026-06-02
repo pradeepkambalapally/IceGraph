@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from base_classes.base_file import BaseFile, HiddenFile
 from collectors.collect_manifests import ManifestRecord
@@ -21,6 +21,8 @@ class DataFileRecord(BaseFile):
     size_gb: str
     row_count: int
     partition: str
+    earliest_appearing_snapshot_id: int
+    earliest_appearing_snapshot_timestamp: Optional[str]
     sort_order_id: int
     split_offsets: str
     key_metadata: str
@@ -60,6 +62,8 @@ class CollectDataFiles(Collector):
             size_gb=f"{(data_file_dict['file_size_in_bytes'] / 1024 ** 3):.10f}",
             row_count=data_file_dict["record_count"],
             partition=format_partition(data_file_dict["partition"]),
+            earliest_appearing_snapshot_id=data_file_dict["earliest_snapshot_id"],
+            earliest_appearing_snapshot_timestamp=data_file_dict["earliest_snapshot_timestamp"],
             sort_order_id=data_file_dict["sort_order_id"],
             split_offsets=UI_NEWLINE.join(map(str, data_file_dict["split_offsets"] or [])),
             key_metadata=data_file_dict["key_metadata"],
