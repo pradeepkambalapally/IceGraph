@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { FileType } from '../graphConstants'
-import { formatLocaleDateTime } from '../utils/dateUtils'
+import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
+import { parseSummary } from '../utils/snapshotUtils'
 
 function Section({ title, children }) {
   return (
@@ -172,6 +173,13 @@ export default function MetadataPage() {
     ? formatLocaleDateTime((new Date(metadata['last-updated-ms'])))
     : null
 
+  const currentSnapshotNode = (nodes || [])
+    .find(n => n.type === FileType.SNAPSHOT && n.details &&
+      String(n.details.snapshot_id) === String(metadata['current-snapshot-id']))
+
+  const currentSummary = currentSnapshotNode ? parseSummary(currentSnapshotNode.details.summary) : []
+  const getStat = (key) => currentSummary.find(s => s.key === key)?.value ?? null
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#0d1117]">
       <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-6">
@@ -214,6 +222,15 @@ export default function MetadataPage() {
             <KV label="Format Version" value={metadata['format-version']} />
             <KV label="Last Updated" value={lastUpdated} />
             <KV label="Current Snapshot" value={metadata['current-snapshot-id']} mono />
+            {currentSnapshotNode && <>
+              <KV label="Snapshot Timestamp" value={formatLocaleDateTime(parseUtcDate(currentSnapshotNode.details.timestamp))} />
+              <KV label="Total Records" value={getStat('total-records')} />
+              <KV label="Data Files" value={getStat('total-data-files')} />
+              <KV label="Table Size" value={getStat('total-files-size')} />
+              <KV label="Delete Files" value={getStat('total-delete-files')} />
+              <KV label="Position Deletes" value={getStat('total-position-deletes')} />
+              <KV label="Equality Deletes" value={getStat('total-equality-deletes')} />
+            </>}
           </div>
         </Section>
 

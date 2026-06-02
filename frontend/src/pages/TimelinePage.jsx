@@ -3,24 +3,12 @@ import { useOutletContext } from 'react-router-dom'
 import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
 import { parseUtcDate } from '../utils/dateUtils'
+import { parseSummary } from '../utils/snapshotUtils'
 
 const COLOR_A = '#1964B9'
 const COLOR_B = '#6437D2'
 const COLOR_C = '#D97706'
 const COLOR_INIT = '#4a5568'
-
-
-function parseSummary(summary) {
-  if (!summary) return []
-  return summary
-    .split('\n')
-    .map(line => {
-      const idx = line.indexOf(':')
-      if (idx === -1) return null
-      return { key: line.substring(0, idx).trim(), value: line.substring(idx + 1).trim() }
-    })
-    .filter(Boolean)
-}
 
 function formatTs(tsStr) {
   if (!tsStr) return null
