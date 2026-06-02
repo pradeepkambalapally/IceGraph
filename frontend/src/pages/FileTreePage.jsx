@@ -62,6 +62,12 @@ function getAllTreePaths(node, prefix) {
   return paths
 }
 
+function getFolderLastModified(node, fileTimestampMap) {
+  const files = getAllFilesFromNode(node)
+  const timestamps = files.map(f => fileTimestampMap[f]).filter(Boolean)
+  return timestamps.length > 0 ? timestamps.reduce((a, b) => (a > b ? a : b)) : null
+}
+
 function buildTree(partitions) {
   const root = { children: {}, files: [] }
   for (const [partitionStr, files] of partitions) {
@@ -82,7 +88,7 @@ function buildTree(partitions) {
   return root
 }
 
-function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch }) {
+function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch, timestamp }) {
   return (
     <div
       onClick={() => toggleFile(filePath)}
@@ -105,6 +111,11 @@ function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch }) {
       >
         {'\u202A' + filePath + '\u202C'}
       </span>
+      {timestamp && (
+        <span className="text-xs font-mono text-slate-400 shrink-0 whitespace-nowrap" title="First appearing snapshot timestamp">
+          {timestamp}
+        </span>
+      )}
       <button
         onClick={e => { e.stopPropagation(); navigate(`/table/graph${tabSearch}`, { state: { selectNodeId: filePath } }) }}
         title="View in graph"
@@ -121,10 +132,11 @@ function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch }) {
   )
 }
 
-function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, navigate, tabSearch, collapsed, toggleCollapse, setCollapsed }) {
+function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, navigate, tabSearch, collapsed, toggleCollapse, setCollapsed, fileTimestampMap }) {
   const allFiles = getAllFilesFromNode(node)
   const allChecked = allFiles.length > 0 && allFiles.every(f => checkedFiles.has(f))
   const someChecked = !allChecked && allFiles.some(f => checkedFiles.has(f))
+  const folderLastModified = getFolderLastModified(node, fileTimestampMap)
   const isCollapsed = collapsed[path]
   const sortedChildren = Object.entries(node.children).sort(([a], [b]) => b.localeCompare(a))
   const hasChildFolders = sortedChildren.length > 0
@@ -163,9 +175,14 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
           <svg className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
             <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           </svg>
-          <span className="text-sm font-mono text-[#e2e8f0] truncate">{label}</span>
+          <span className="text-sm font-mono text-[#e2e8f0] break-all">{label}</span>
         </div>
         <div className="flex items-center gap-2 ml-4 shrink-0">
+          {folderLastModified && (
+            <span className="text-xs font-mono text-slate-400 whitespace-nowrap" title="Last modified (earliest appearing snapshot)">
+              {folderLastModified}
+            </span>
+          )}
           <span className="text-[0.65rem] font-bold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
             {allFiles.length}
           </span>
@@ -221,6 +238,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
               collapsed={collapsed}
               toggleCollapse={toggleCollapse}
               setCollapsed={setCollapsed}
+              fileTimestampMap={fileTimestampMap}
             />
           ))}
           {node.files.length > 0 && (
@@ -233,6 +251,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
                   toggleFile={toggleFile}
                   navigate={navigate}
                   tabSearch={tabSearch}
+                  timestamp={fileTimestampMap[filePath]}
                 />
               ))}
             </div>
@@ -376,6 +395,17 @@ export default function FileTreePage() {
 
   const treeData = useMemo(() => buildTree(filteredPartitions), [filteredPartitions])
 
+  const fileTimestampMap = useMemo(() => {
+    const map = {}
+    for (const files of Object.values(partitionMap)) {
+      for (const filePath of files) {
+        const ts = nodeById[filePath]?.details?.earliest_appearing_snapshot_timestamp
+        if (ts) map[filePath] = ts
+      }
+    }
+    return map
+  }, [partitionMap, nodeById])
+
   const totalPartitions = filteredPartitions.length
   const totalFiles = filteredPartitions.reduce((sum, [, f]) => sum + f.length, 0)
 
@@ -484,7 +514,7 @@ export default function FileTreePage() {
                   )}
                 </span>
                 {currentSnapshot?.details.snapshot_id && (
-                  <span className="text-xs font-mono text-slate-300">
+                  <span className="text-xs font-mono text-slate-400">
                     {currentSnapshot.details.snapshot_id}
                   </span>
                 )}
@@ -673,6 +703,7 @@ export default function FileTreePage() {
         {viewMode === 'flat' && filteredPartitions.map(([partition, files]) => {
           const allChecked = files.every(f => checkedFiles.has(f))
           const someChecked = !allChecked && files.some(f => checkedFiles.has(f))
+          const flatFolderLastModified = files.map(f => fileTimestampMap[f]).filter(Boolean).reduce((a, b) => (a > b ? a : b), null)
           return (
             <div key={partition} className="bg-[#1a202c] rounded-lg border border-[#2d3748] overflow-hidden">
               <div className="flex items-center px-4 py-2.5 hover:bg-[#252d3d] transition cursor-pointer" onClick={() => toggleCollapse(partition)}>
@@ -683,9 +714,14 @@ export default function FileTreePage() {
                   >
                     <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span className="text-sm font-mono text-[#e2e8f0] truncate">{partition}</span>
+                  <span className="text-sm font-mono text-[#e2e8f0] break-all">{partition}</span>
                 </div>
                 <div className="flex items-center gap-3 ml-4 shrink-0">
+                  {flatFolderLastModified && (
+                    <span className="text-xs font-mono text-slate-400 whitespace-nowrap" title="Last modified (earliest appearing snapshot)">
+                      {flatFolderLastModified}
+                    </span>
+                  )}
                   <span className="text-[0.65rem] font-bold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
                     {files.length}
                   </span>
@@ -710,6 +746,7 @@ export default function FileTreePage() {
                       toggleFile={toggleFile}
                       navigate={navigate}
                       tabSearch={tabSearch}
+                      timestamp={fileTimestampMap[filePath]}
                     />
                   ))}
                 </div>
@@ -731,6 +768,7 @@ export default function FileTreePage() {
                     toggleFile={toggleFile}
                     navigate={navigate}
                     tabSearch={tabSearch}
+                    timestamp={fileTimestampMap[filePath]}
                   />
                 ))}
               </div>
@@ -751,6 +789,7 @@ export default function FileTreePage() {
                   collapsed={collapsed}
                   toggleCollapse={toggleCollapse}
                   setCollapsed={setCollapsed}
+                  fileTimestampMap={fileTimestampMap}
                 />
               ))}
           </>
