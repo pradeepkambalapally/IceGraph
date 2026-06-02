@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 import pyspark
-from arrow import Arrow
 
 from base_classes.base_file import BaseFile, HiddenFile
 from base_classes.utils import timed
@@ -20,7 +19,7 @@ class HiddenManifestMetadata(HiddenFile):
 @dataclass
 class ManifestRecord(BaseFile):
     added_snapshot_id: int
-    added_snapshot_timestamp: Arrow
+    added_snapshot_timestamp: str
     partitions: set
     total_rows_in_downstream_files: int
     existing_child_files: list[str]
