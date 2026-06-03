@@ -176,6 +176,31 @@ function DiffRow({ label, before, after }) {
   )
 }
 
+function SnapSummary({ summary }) {
+  const rows = parseSummary(summary)
+  if (rows.length === 0) return null
+  return (
+    <div>
+      <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
+      <div className="flex flex-col">
+        {rows.map(({ key, value }) => (
+          <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
+            <span className="text-xs text-slate-400">{key}</span>
+            <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DiffList({ diff }) {
+  const rows = diff.filter(({ key }) => key !== 'type')
+  return rows.length > 0
+    ? rows.map(({ key, before, after }) => <DiffRow key={key} label={key} before={before} after={after} />)
+    : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
+}
+
 export default function TimelinePage() {
   const { nodes } = useOutletContext()
   const [selected, setSelected] = useState(null)
@@ -446,7 +471,7 @@ export default function TimelinePage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="w-[50vw] min-w-[360px] max-w-[680px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
+            className="w-[60vw] min-w-[420px] max-w-[860px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
             style={{ borderLeft: `4px solid ${colorFor(selected.type)}` }}
             onClick={e => e.stopPropagation()}
           >
@@ -488,19 +513,7 @@ export default function TimelinePage() {
                           {selectedSnap.operation ?? '—'}
                         </span>
                       </div>
-                      {parseSummary(selectedSnap.summary).length > 0 && (
-                        <div>
-                          <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-                          <div className="flex flex-col">
-                            {parseSummary(selectedSnap.summary).map(({ key, value }) => (
-                              <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-                                <span className="text-xs text-slate-400">{key}</span>
-                                <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <SnapSummary summary={selectedSnap.summary} />
                     </>
                   )}
                 </>
@@ -525,42 +538,19 @@ export default function TimelinePage() {
                             {selectedSnap.operation ?? '—'}
                           </span>
                         </div>
-                        {parseSummary(selectedSnap.summary).length > 0 && (
-                          <div>
-                            <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-                            <div className="flex flex-col">
-                              {parseSummary(selectedSnap.summary).map(({ key, value }) => (
-                                <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-                                  <span className="text-xs text-slate-400">{key}</span>
-                                  <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <SnapSummary summary={selectedSnap.summary} />
                       </>
                     )}
                   </div>
 
                   <div className="mt-4 border-t border-[#2d3748] pt-4">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
-                    {selected.diff.filter(({ key }) => key !== 'type').length > 0
-                      ? selected.diff.filter(({ key }) => key !== 'type').map(({ key, before, after }) => (
-                        <DiffRow key={key} label={key} before={before} after={after} />
-                      ))
-                      : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
-                    }
+                    <DiffList diff={selected.diff} />
                   </div>
                 </>
               )}
 
-              {selected.type === 'B' && (
-                selected.diff.length > 0
-                  ? selected.diff.map(({ key, before, after }) => (
-                    <DiffRow key={key} label={key} before={before} after={after} />
-                  ))
-                  : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
-              )}
+              {selected.type === 'B' && <DiffList diff={selected.diff} />}
 
               {selected.type === 'init' && (
                 <>
@@ -586,19 +576,7 @@ export default function TimelinePage() {
                           {selectedSnap.operation ?? '—'}
                         </span>
                       </div>
-                      {parseSummary(selectedSnap.summary).length > 0 && (
-                        <div>
-                          <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-                          <div className="flex flex-col">
-                            {parseSummary(selectedSnap.summary).map(({ key, value }) => (
-                              <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-                                <span className="text-xs text-slate-400">{key}</span>
-                                <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <SnapSummary summary={selectedSnap.summary} />
                     </>
                   )}
 
