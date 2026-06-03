@@ -471,7 +471,7 @@ export default function TimelinePage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="w-[50vw] min-w-[360px] max-w-[680px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
+            className="w-[60vw] min-w-[420px] max-w-[860px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
             style={{ borderLeft: `4px solid ${colorFor(selected.type)}` }}
             onClick={e => e.stopPropagation()}
           >
