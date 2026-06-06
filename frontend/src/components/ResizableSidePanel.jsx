@@ -1,19 +1,25 @@
-import { forwardRef, useCallback, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useState } from 'react'
+import {
+  PANEL_ACCENT_BORDER_REM,
+  PANEL_GUTTER_REM,
+  PANEL_WIDTH_DEFAULT_REM,
+  PANEL_WIDTH_MIN_REM,
+  pxToRem,
+  remToPx,
+} from '../layoutConstants'
 
-export const PANEL_WIDTH_DEFAULT = 400
-export const PANEL_WIDTH_MIN = 320
-export const PANEL_WIDTH_RELAXED = 560
+export { PANEL_WIDTH_RELAXED_REM as PANEL_WIDTH_RELAXED } from '../layoutConstants'
 
 function FullscreenToggleIcon({ compress }) {
   if (compress) {
     return (
-      <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg className="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     )
   }
   return (
-    <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg className="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M2 6V2h4M10 2h4v4M2 10v4h4M14 10v4h-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -25,9 +31,12 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
   header,
   children,
   onClose,
-  maxContainerWidth = typeof window !== 'undefined' ? window.innerWidth - 32 : 1200,
+  onLayoutChange,
+  maxContainerWidth = typeof window !== 'undefined'
+    ? remToPx(window.innerWidth) - remToPx(PANEL_GUTTER_REM)
+    : remToPx(PANEL_WIDTH_DEFAULT_REM),
 }, scrollRef) {
-  const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH_DEFAULT)
+  const [panelWidthRem, setPanelWidthRem] = useState(PANEL_WIDTH_DEFAULT_REM)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const handleClose = useCallback(() => {
@@ -38,12 +47,15 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
   const startResize = useCallback((e) => {
     e.preventDefault()
     const startX = e.clientX
-    const startWidth = panelWidth
-    const maxWidth = Math.max(PANEL_WIDTH_MIN, maxContainerWidth)
+    const startWidthRem = panelWidthRem
+    const maxWidthRem = Math.max(PANEL_WIDTH_MIN_REM, pxToRem(maxContainerWidth))
 
     const onMove = (ev) => {
-      const nextWidth = Math.min(maxWidth, Math.max(PANEL_WIDTH_MIN, startWidth + (startX - ev.clientX)))
-      setPanelWidth(nextWidth)
+      const nextWidthRem = Math.min(
+        maxWidthRem,
+        Math.max(PANEL_WIDTH_MIN_REM, startWidthRem + pxToRem(startX - ev.clientX)),
+      )
+      setPanelWidthRem(nextWidthRem)
     }
 
     const onUp = () => {
@@ -57,22 +69,25 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [panelWidth, maxContainerWidth])
+  }, [panelWidthRem, maxContainerWidth])
 
   const contentPad = isFullscreen ? 'px-5' : 'pl-9 pr-5'
+
+  useEffect(() => {
+    onLayoutChange?.({ isFullscreen, panelWidthRem })
+  }, [isFullscreen, panelWidthRem, onLayoutChange])
 
   return (
     <div
       ref={scrollRef}
-      className={`overflow-y-auto bg-[#1a202c] z-[1000] shadow-xl ${
+      className={`overflow-y-auto bg-surface z-[1000] shadow-xl ${
         isFullscreen
-          ? 'fixed top-[70px] left-0 right-0 bottom-0 border-l-4'
-          : 'absolute top-4 right-4 max-h-[calc(100%-2rem)] rounded-xl'
+          ? 'fixed top-nav left-0 right-0 bottom-0 border-l-4'
+          : 'absolute top-4 right-4 max-h-panel max-w-panel rounded-xl'
       }`}
       style={{
         borderLeftColor: isFullscreen ? accentColor : undefined,
-        width: isFullscreen ? undefined : panelWidth,
-        maxWidth: isFullscreen ? undefined : `calc(100% - 32px)`,
+        width: isFullscreen ? undefined : `${panelWidthRem}rem`,
         '--panel-accent': accentColor,
       }}
     >
@@ -80,7 +95,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
         <div
           onMouseDown={startResize}
           className="absolute left-0 top-0 bottom-0 w-7 cursor-ew-resize z-10 group rounded-l-xl"
-          style={{ borderLeft: `5px solid ${accentColor}` }}
+          style={{ borderLeft: `${PANEL_ACCENT_BORDER_REM}rem solid ${accentColor}` }}
           title="Drag left to widen"
         >
           <div
@@ -88,7 +103,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
             aria-hidden="true"
           />
           <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-7 flex items-center justify-center pointer-events-none text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] group-hover:text-white transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-7 flex items-center justify-center pointer-events-none text-white/85 drop-shadow-sm group-hover:text-white transition-colors"
             aria-hidden="true"
           >
             <svg className="w-4 h-7" viewBox="0 0 12 22" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -98,14 +113,14 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
           </div>
         </div>
       )}
-      <div className={`flex items-start justify-between pt-5 pb-4 border-b border-[#2d3748] shrink-0 ${contentPad}`}>
+      <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
         {header ?? (
-          <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug min-w-0">{title}</div>
+          <div className="font-bold text-base text-ink pr-6 leading-snug min-w-0">{title}</div>
         )}
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
+            className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
             onClick={() => setIsFullscreen(p => !p)}
             onMouseDown={e => e.preventDefault()}
             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
@@ -114,7 +129,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
           </button>
           <button
             type="button"
-            className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
+            className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
             onClick={handleClose}
             onMouseDown={e => e.preventDefault()}
             title="Close"

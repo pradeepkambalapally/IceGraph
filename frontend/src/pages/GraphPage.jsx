@@ -1,28 +1,39 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
+import CopyIconButton from '../components/CopyIconButton'
+import ResizableSidePanel from '../components/ResizableSidePanel'
 import {
   GRAPH_SETTINGS,
   DELETED_DATA_FILE_CONNECTION_COLOR,
   FileType,
 } from '../graphConstants'
+import {
+  getNavHeightPx,
+  GRAPH_NODE_FONT_REM,
+  GRAPH_NODE_PADDING_X_REM,
+  GRAPH_NODE_PADDING_Y_REM,
+  PANEL_GUTTER_REM,
+  PANEL_WIDTH_DEFAULT_REM,
+  PANEL_WIDTH_RELAXED_REM,
+  remToPx,
+} from '../layoutConstants'
 import JSONbig from 'json-bigint'
 
 const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
 
-const NODE_FONT_SIZE = 80
-const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
-const LINK_FONT_SIZE = 60
-const LINK_FONT = `500 ${LINK_FONT_SIZE}px "system-ui"`
-const NODE_PADDING_X = 40
-const NODE_PADDING_Y = 28
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
-
 const STICKY_SECTION_LINE_COUNT_COLLAPSE = 15
-const STICKY_PANEL_WIDTH_DEFAULT = 400
-const STICKY_PANEL_WIDTH_MIN = 320
-const STICKY_PANEL_WIDTH_RELAXED = 560
+
+function getGraphNodeMetrics() {
+  return {
+    fontSize: remToPx(GRAPH_NODE_FONT_REM),
+    paddingX: remToPx(GRAPH_NODE_PADDING_X_REM),
+    paddingY: remToPx(GRAPH_NODE_PADDING_Y_REM),
+    linkFontSize: remToPx(3.75),
+  }
+}
 
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
@@ -70,49 +81,25 @@ function DetailRow({ r, relaxedCollapse = false }) {
   const lineCount = textToCopy.split('\n').length
   const isCollapsible = lineCount > STICKY_SECTION_LINE_COUNT_COLLAPSE
   const [isCollapsed, setIsCollapsed] = useState(true)
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(textToCopy)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   return (
     <div>
       <div className="flex items-center justify-between mb-1 gap-2">
-        <span className="block font-bold text-slate-500 text-[0.65rem] uppercase tracking-wider">
+        <span className="block font-bold text-slate-500 text-caption uppercase tracking-wider">
           {r.label}
         </span>
         {isCollapsible && (
           <button
             onClick={() => setIsCollapsed(p => !p)}
-            className="text-[0.6rem] font-bold uppercase tracking-wide text-[#2E86C1] hover:text-white transition shrink-0"
+            className="text-micro font-bold uppercase tracking-wide text-accent hover:text-white transition shrink-0"
           >
             {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
           </button>
         )}
       </div>
       <div className="relative">
-        <button
-          onClick={handleCopy}
-          onMouseDown={e => e.preventDefault()}
-          title={copied ? 'Copied!' : 'Copy value'}
-          className="absolute top-2 right-2 z-10 p-1 rounded border border-[#2d3748] bg-[#1a202c]/90 text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors cursor-pointer"
-        >
-          {copied ? (
-            <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M3 8l3.5 3.5L13 4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : (
-            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <rect x="5" y="5" width="8" height="9" rx="1.5" />
-              <path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h1" strokeLinecap="round" />
-            </svg>
-          )}
-        </button>
+        <CopyIconButton text={textToCopy} className="absolute top-2 right-2 z-10" />
         <span
-          className="block font-mono bg-[#0d1117] text-slate-200 pl-3 pr-9 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
+          className="block font-mono bg-canvas text-slate-200 pl-3 pr-9 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
           style={isCollapsible && isCollapsed ? {
             maxHeight: relaxedCollapse ? '22lh' : '10lh',
             overflow: 'hidden',
@@ -140,13 +127,13 @@ export default function GraphPage() {
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNodeInternal] = useState(null)
   const [movementPopup, setMovementPopup] = useState(null)
-  const [panelWidth, setPanelWidth] = useState(STICKY_PANEL_WIDTH_DEFAULT)
-  const [isPanelFullscreen, setIsPanelFullscreen] = useState(false)
+  const [panelLayout, setPanelLayout] = useState({ isFullscreen: false, panelWidthRem: PANEL_WIDTH_DEFAULT_REM })
+  const [nodeMetrics, setNodeMetrics] = useState(getGraphNodeMetrics)
 
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
-    height: window.innerHeight - 70
-  });
+    height: window.innerHeight - getNavHeightPx(),
+  })
 
   const isInspectModeRef = useRef(isInspectMode)
   const highlightNodesRef = useRef(highlightNodes)
@@ -179,14 +166,15 @@ export default function GraphPage() {
 
   useEffect(() => {
     const handleResize = () => {
+      setNodeMetrics(getGraphNodeMetrics())
       setDimensions({
         width: window.innerWidth,
-        height: window.innerHeight - 70
-      });
-    };
+        height: window.innerHeight - getNavHeightPx(),
+      })
+    }
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const graphData = useMemo(() => {
@@ -275,7 +263,7 @@ export default function GraphPage() {
 
   const closeStickyPanel = useCallback(() => {
     setStickyNode(null)
-    setIsPanelFullscreen(false)
+    setPanelLayout({ isFullscreen: false, panelWidthRem: PANEL_WIDTH_DEFAULT_REM })
   }, [setStickyNode])
 
   const deselectNode = useCallback(() => {
@@ -283,30 +271,6 @@ export default function GraphPage() {
     closeStickyPanel()
     history.replaceState({ graphSelection: null }, '')
   }, [closeStickyPanel])
-
-  const startPanelResize = useCallback((e) => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startWidth = panelWidth
-    const maxWidth = Math.max(STICKY_PANEL_WIDTH_MIN, dimensions.width - 32)
-
-    const onMove = (ev) => {
-      const nextWidth = Math.min(maxWidth, Math.max(STICKY_PANEL_WIDTH_MIN, startWidth + (startX - ev.clientX)))
-      setPanelWidth(nextWidth)
-    }
-
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-
-    document.body.style.cursor = 'ew-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }, [panelWidth, dimensions.width])
 
   const resetView = useCallback(() => {
     deselectNode()
@@ -505,13 +469,16 @@ export default function GraphPage() {
 
   const paintNode = useCallback((node, ctx) => {
     const label = node.label || String(node.id)
+    const { fontSize, paddingX, paddingY } = nodeMetrics
+    const nodeFont = `500 ${fontSize}px "system-ui"`
 
-    ctx.font = NODE_FONT
-    if (!node.__pillW) {
-      const w = ctx.measureText(label).width + NODE_PADDING_X * 2
-      const h = NODE_FONT_SIZE + NODE_PADDING_Y * 2
+    ctx.font = nodeFont
+    if (!node.__pillW || node.__metricsKey !== fontSize) {
+      const w = ctx.measureText(label).width + paddingX * 2
+      const h = fontSize + paddingY * 2
       node.__pillW = w
       node.__pillH = h
+      node.__metricsKey = fontSize
     }
 
     const w = node.__pillW
@@ -528,7 +495,7 @@ export default function GraphPage() {
       ctx.rect(x, y, w, h)
     }
 
-    ctx.fillStyle = node.color || '#2d3748'
+    ctx.fillStyle = node.color || getComputedStyle(document.documentElement).getPropertyValue('--color-edge').trim() || '#2d3748'
     ctx.fill()
 
     ctx.strokeStyle = '#ffffff'
@@ -547,14 +514,15 @@ export default function GraphPage() {
     ctx.fillText(label, node.x, node.y)
 
     ctx.lineWidth = 1
-  }, [])
+  }, [nodeMetrics])
 
   const paintPointerArea = useCallback((node, color, ctx) => {
-    const w = node.__pillW || 40
-    const h = node.__pillH || (NODE_FONT_SIZE + NODE_PADDING_Y * 2)
+    const { fontSize, paddingY } = nodeMetrics
+    const w = node.__pillW || remToPx(2.5)
+    const h = node.__pillH || (fontSize + paddingY * 2)
     ctx.fillStyle = color
     ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h)
-  }, [])
+  }, [nodeMetrics])
 
   const linkCurvatures = useMemo(() => {
     const map = new Map()
@@ -586,12 +554,12 @@ export default function GraphPage() {
       qY += (-dx / len) * curvature * len * position
     }
     ctx.shadowBlur = 0
-    ctx.font = LINK_FONT
+    ctx.font = `500 ${nodeMetrics.linkFontSize}px "system-ui"`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#e3f8f5ff'
     ctx.fillText(link.label, qX, qY)
-  }, [linkCurvatures])
+  }, [linkCurvatures, nodeMetrics])
 
   const nodeVisibility = useCallback((n) => {
     const hl = highlightNodesRef.current
@@ -614,15 +582,7 @@ export default function GraphPage() {
   } : null
 
   return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{
-        height: 'calc(100vh - 70px)',
-        backgroundColor: '#0d1117',
-        backgroundImage: 'radial-gradient(circle, #2d3748 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
-    >
+    <div className="relative w-full overflow-hidden h-graph bg-graph-grid">
       <ForceGraph2D
         ref={fgRef}
         width={dimensions.width}
@@ -654,12 +614,12 @@ export default function GraphPage() {
         d3AlphaDecay={1}
       />
 
-      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-[200px]">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-52">
         <button
           className={`w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
             ${isFullView
-              ? 'bg-[#2E86C1] text-white hover:bg-[#2471a3]'
-              : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
+              ? 'bg-accent text-white hover:bg-accent-dark'
+              : 'bg-surface text-accent border border-accent hover:bg-edge'
             }`}
           onClick={() => !isFullView && resetView()}
           onMouseDown={e => e.preventDefault()}
@@ -670,8 +630,8 @@ export default function GraphPage() {
         <button
           className={`w-full flex overflow-hidden rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
             ${isInspectMode
-              ? 'bg-[#2E86C1] text-white border border-[#2E86C1] hover:bg-[#2471a3]'
-              : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
+              ? 'bg-accent text-white border border-accent hover:bg-accent-dark'
+              : 'bg-surface text-accent border border-accent hover:bg-edge'
             }`}
           onClick={() => setIsInspectMode(p => !p)}
           onMouseDown={e => e.preventDefault()}
@@ -685,7 +645,7 @@ export default function GraphPage() {
         </button>
 
         <button
-          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]"
+          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-surface text-accent border border-accent hover:bg-edge"
           onClick={() => resetZoom()}
           onMouseDown={e => e.preventDefault()}
         >
@@ -695,11 +655,11 @@ export default function GraphPage() {
 
       {movementPopup && (
         <div className="absolute inset-0 flex items-center justify-center z-[1100] pointer-events-none">
-          <div className="bg-[#1a202c]/57 backdrop-blur-md border border-[#2d3748] rounded-xl shadow-2xl p-4 pointer-events-auto w-[70vw] font-sans">
-            <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-3">
+          <div className="bg-surface/57 backdrop-blur-md border border-edge rounded-xl shadow-2xl p-4 pointer-events-auto w-[70dvw] max-w-4xl font-sans">
+            <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-3">
               {movementPopup.direction === 'in' ? 'Navigate to parent' : 'Navigate to child'}
             </div>
-            <div ref={popupListRef} className="flex flex-col max-h-[60vh] overflow-y-auto">
+            <div ref={popupListRef} className="flex flex-col max-h-[60dvh] overflow-y-auto">
               {movementPopup.nodes.map((node, i) => {
                 const combo = movementPopup.combos[i]
                 const typed = movementPopup.input
@@ -707,13 +667,13 @@ export default function GraphPage() {
                   <button
                     key={node.id}
                     onClick={() => { navigateTo(node); setMovementPopup(null) }}
-                    className="flex items-center gap-3 py-2 px-2 border-b border-[#2d3748] last:border-0 hover:bg-[#252d3d] rounded transition cursor-pointer text-left"
+                    className="flex items-center gap-3 py-2 px-2 border-b border-edge last:border-0 hover:bg-surface-hover rounded transition cursor-pointer text-left"
                   >
-                    <span className="rounded bg-[#2E86C1]/35 text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-[#2E86C1]">
+                    <span className="rounded bg-accent/35 text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-accent">
                       <span className="text-white">{combo.slice(0, typed.length)}</span>
                       <span className="text-white">{combo.slice(typed.length)}</span>
                     </span>
-                    <span className="text-sm text-[#e2e8f0] font-mono">{node.label}</span>
+                    <span className="text-sm text-ink font-mono">{node.label}</span>
                   </button>
                 )
               })}
@@ -729,86 +689,27 @@ export default function GraphPage() {
       )}
 
       {sticky && (
-        <div
+        <ResizableSidePanel
           ref={stickyPanelRef}
-          className={`overflow-y-auto bg-[#1a202c] z-[1000] shadow-xl ${
-            isPanelFullscreen
-              ? 'fixed top-[70px] left-0 right-0 bottom-0 border-l-4'
-              : 'absolute top-4 right-4 max-h-[88vh] rounded-xl'
-          }`}
-          style={{
-            borderLeftColor: isPanelFullscreen ? stickyNode.color : undefined,
-            width: isPanelFullscreen ? undefined : panelWidth,
-            maxWidth: isPanelFullscreen ? undefined : `calc(100% - 32px)`,
-            '--panel-accent': stickyNode.color,
-          }}
+          accentColor={stickyNode.color}
+          title={sticky.title.toUpperCase()}
+          onClose={closeStickyPanel}
+          onLayoutChange={setPanelLayout}
+          maxContainerWidth={dimensions.width - remToPx(PANEL_GUTTER_REM)}
         >
-          {!isPanelFullscreen && (
-            <div
-              onMouseDown={startPanelResize}
-              className="absolute left-0 top-0 bottom-0 w-7 cursor-ew-resize z-10 group rounded-l-xl"
-              style={{ borderLeft: `5px solid ${stickyNode.color}` }}
-              title="Drag left to widen"
-            >
-              <div
-                className="absolute inset-0 rounded-l-xl pointer-events-none transition-colors bg-transparent group-hover:bg-[color-mix(in_srgb,var(--panel-accent)_25%,transparent)] group-active:bg-[color-mix(in_srgb,var(--panel-accent)_40%,transparent)]"
-                aria-hidden="true"
-              />
-              <div
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-7 flex items-center justify-center pointer-events-none text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] group-hover:text-white transition-colors"
-                aria-hidden="true"
-              >
-                <svg className="w-4 h-7" viewBox="0 0 12 22" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M8 11H2M2 11L4.5 8M2 11L4.5 14" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4 11h6M10 11L7.5 8M10 11L7.5 14" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </div>
+          {isInspectMode && (
+            <span className="inline-flex items-center gap-1.5 bg-accent/10 text-accent px-2.5 py-1 rounded-md text-caption font-bold uppercase tracking-wide w-fit">
+              🔒 Locked View
+            </span>
           )}
-          <div className={`flex items-start justify-between pt-5 pb-4 border-b border-[#2d3748] ${isPanelFullscreen ? 'px-5' : 'pl-9 pr-5'}`}>
-            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title.toUpperCase()}</div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
-                onClick={() => setIsPanelFullscreen(p => !p)}
-                onMouseDown={e => e.preventDefault()}
-                title={isPanelFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-              >
-                {isPanelFullscreen ? (
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M2 6V2h4M10 2h4v4M2 10v4h4M14 10v4h-4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-              <button
-                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
-                onClick={closeStickyPanel}
-                onMouseDown={e => e.preventDefault()}
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          <div className={`py-4 flex flex-col gap-3 ${isPanelFullscreen ? 'px-5' : 'pl-9 pr-5'}`}>
-            {isInspectMode && (
-              <span className="inline-flex items-center gap-1.5 bg-[#2E86C1]/10 text-[#2E86C1] px-2.5 py-1 rounded-md text-[0.65rem] font-bold uppercase tracking-wide w-fit">
-                🔒 Locked View
-              </span>
-            )}
-            {sticky.rows.filter((r) => r.value !== '').map((r, i) => (
-              <DetailRow
-                key={i}
-                r={r}
-                relaxedCollapse={isPanelFullscreen || panelWidth >= STICKY_PANEL_WIDTH_RELAXED}
-              />
-            ))}
-          </div>
-        </div>
+          {sticky.rows.filter((r) => r.value !== '').map((r, i) => (
+            <DetailRow
+              key={i}
+              r={r}
+              relaxedCollapse={panelLayout.isFullscreen || panelLayout.panelWidthRem >= PANEL_WIDTH_RELAXED_REM}
+            />
+          ))}
+        </ResizableSidePanel>
       )}
     </div>
   )

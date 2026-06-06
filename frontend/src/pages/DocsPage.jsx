@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 function Key({ k }) {
   return (
-    <kbd className="bg-[#252d3d] border border-[#3d4a5c] text-[#7dd3fc] text-xs font-mono px-2 py-0.5 rounded">
+    <kbd className="bg-surface-hover border border-[#3d4a5c] text-[#7dd3fc] text-xs font-mono px-2 py-0.5 rounded">
       {k}
     </kbd>
   )
@@ -50,7 +50,7 @@ const SECTIONS = [
           <h3 className="text-white font-semibold">1. Enter the table name</h3>
           <p>
             From the Home page, type the fully-qualified name of your Iceberg table
-            (e.g. <code className="bg-[#252d3d] px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Load.
+            (e.g. <code className="bg-surface-hover px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Load.
           </p>
         </div>
         <div className="space-y-2">
@@ -339,7 +339,7 @@ export default function DocsPage() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <aside className="w-52 shrink-0 bg-[#151b26] border-r border-[#2d3748] overflow-y-auto hidden sm:block">
+      <aside className="w-52 shrink-0 bg-[#151b26] border-r border-edge overflow-y-auto hidden sm:block">
         <div className="px-4 py-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Documentation</p>
           <nav className="flex flex-col gap-0.5">
@@ -348,8 +348,8 @@ export default function DocsPage() {
                 key={s.id}
                 onClick={() => setActive(s.id)}
                 className={`text-left text-sm px-3 py-2 rounded-md transition ${active === s.id
-                  ? 'bg-[#1e3a5f] text-white font-medium'
-                  : 'text-slate-400 hover:text-white hover:bg-[#252d3d]'
+                  ? 'bg-accent-muted text-white font-medium'
+                  : 'text-slate-400 hover:text-white hover:bg-surface-hover'
                   }`}
               >
                 {s.title}
@@ -364,7 +364,7 @@ export default function DocsPage() {
           <select
             value={active}
             onChange={e => setActive(e.target.value)}
-            className="w-full bg-[#252d3d] text-white text-sm border border-[#2d3748] rounded-md px-3 py-2"
+            className="w-full bg-surface-hover text-white text-sm border border-edge rounded-md px-3 py-2"
           >
             {SECTIONS.map(s => (
               <option key={s.id} value={s.id}>{s.title}</option>

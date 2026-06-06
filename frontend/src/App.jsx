@@ -23,7 +23,7 @@ function PageLoader() {
 
 function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-[#0d1117] flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col">
       <NavBar />
       {children}
     </div>

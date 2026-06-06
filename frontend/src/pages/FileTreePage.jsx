@@ -10,8 +10,8 @@ function Dropdown({ triggerLabel, isOpen, onToggle, dropdownRef, children }) {
       <button
         onClick={onToggle}
         className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition cursor-pointer select-none ${isOpen
-          ? 'bg-[#1e2a3a] border-[#2E86C1] text-white'
-          : 'bg-[#1a202c] border-[#2d3748] text-[#e2e8f0] hover:border-[#3d4a5c]'
+          ? 'bg-accent-muted/40 border-accent text-white'
+          : 'bg-surface border-edge text-ink hover:border-edge-hover'
           }`}
       >
         <span className="font-medium">{triggerLabel}</span>
@@ -23,7 +23,7 @@ function Dropdown({ triggerLabel, isOpen, onToggle, dropdownRef, children }) {
         </svg>
       </button>
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-[#1a202c] border border-[#2d3748] rounded-xl shadow-2xl overflow-hidden min-w-[160px] max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 z-50 bg-surface border border-edge rounded-xl shadow-2xl overflow-hidden min-w-[160px] max-h-60 overflow-y-auto">
           {children}
         </div>
       )}
@@ -35,11 +35,11 @@ function DropdownItem({ label, badge, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-4 py-2 text-sm transition cursor-pointer ${active ? 'bg-[#1e3a5f] text-white' : 'text-slate-300 hover:bg-[#252d3d] hover:text-white'
+      className={`w-full flex items-center justify-between px-4 py-2 text-sm transition cursor-pointer ${active ? 'bg-accent-muted text-white' : 'text-slate-300 hover:bg-surface-hover hover:text-white'
         }`}
     >
       <span>{label}</span>
-      {badge && <span className="text-[0.6rem] font-bold uppercase tracking-wider text-[#2E86C1] ml-3">{badge}</span>}
+      {badge && <span className="text-micro font-bold uppercase tracking-wider text-accent ml-3">{badge}</span>}
     </button>
   )
 }
@@ -93,8 +93,8 @@ function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch, time
     <div
       onClick={() => toggleFile(filePath)}
       className={`flex items-center gap-2.5 px-3 py-2 rounded-md border transition cursor-pointer group ${checkedFiles.has(filePath)
-        ? 'bg-[#1e3a5f] border-[#2E86C1]/40'
-        : 'bg-[#0d1117] border-transparent hover:bg-[#131c2b] hover:border-[#2d3748]'
+        ? 'bg-accent-muted border-accent/40'
+        : 'bg-canvas border-transparent hover:bg-[#131c2b] hover:border-edge'
         }`}
     >
       <input
@@ -119,7 +119,7 @@ function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch, time
       <button
         onClick={e => { e.stopPropagation(); navigate(`/table/graph${tabSearch}`, { state: { selectNodeId: filePath } }) }}
         title="View in graph"
-        className="shrink-0 ml-2 p-1 rounded text-slate-500 hover:text-[#2E86C1] hover:bg-[#1e3a5f] transition-colors"
+        className="shrink-0 ml-2 p-1 rounded text-slate-500 hover:text-accent hover:bg-accent-muted transition-colors"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="4" cy="8" r="2" />
@@ -163,11 +163,11 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
   }
 
   return (
-    <div className="bg-[#1a202c] rounded-lg border border-[#2d3748] overflow-hidden">
-      <div className="flex items-center px-4 py-2.5 hover:bg-[#252d3d] transition cursor-pointer" onClick={() => toggleCollapse(path)}>
+    <div className="bg-surface rounded-lg border border-edge overflow-hidden">
+      <div className="flex items-center px-4 py-2.5 hover:bg-surface-hover transition cursor-pointer" onClick={() => toggleCollapse(path)}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <svg
-            className={`w-3.5 h-3.5 text-[#2E86C1] shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+            className={`w-3.5 h-3.5 text-accent shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
             viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"
           >
             <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -175,7 +175,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
           <svg className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
             <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           </svg>
-          <span className="text-sm font-mono text-[#e2e8f0] break-all">{label}</span>
+          <span className="text-sm font-mono text-ink break-all">{label}</span>
         </div>
         <div className="flex items-center gap-2 ml-4 shrink-0">
           {folderLastModified && (
@@ -183,7 +183,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
               {folderLastModified}
             </span>
           )}
-          <span className="text-[0.65rem] font-bold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
+          <span className="text-caption font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full">
             {allFiles.length}
           </span>
           {hasChildFolders && (
@@ -191,7 +191,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
               <button
                 onClick={expandInner}
                 title="Expand inner folders"
-                className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-[#2d3748] transition-colors cursor-pointer"
+                className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-edge transition-colors cursor-pointer"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M4 5l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -201,7 +201,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
               <button
                 onClick={collapseInner}
                 title="Collapse inner folders"
-                className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-[#2d3748] transition-colors cursor-pointer"
+                className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-edge transition-colors cursor-pointer"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M4 11l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
@@ -223,7 +223,7 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
       </div>
 
       {!isCollapsed && (
-        <div className="border-t border-[#2d3748] px-4 py-2 flex flex-col gap-2">
+        <div className="border-t border-edge px-4 py-2 flex flex-col gap-2">
           {sortedChildren.map(([childLabel, childNode]) => (
             <TreeNode
               key={childLabel}
@@ -457,7 +457,7 @@ export default function FileTreePage() {
 
   if (snapshots.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#0d1117]">
+      <div className="flex-1 flex items-center justify-center bg-canvas">
         <p className="text-slate-500 text-sm italic">No snapshots available.</p>
       </div>
     )
@@ -466,8 +466,8 @@ export default function FileTreePage() {
   const currentSnapshot = displayedSnapshots[effectiveIdx]
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 py-3 flex items-center flex-wrap gap-x-3 gap-y-2 border-b border-[#2d3748]">
+    <div className="flex-1 flex flex-col bg-canvas overflow-hidden">
+      <div className="shrink-0 px-4 sm:px-6 py-3 flex items-center flex-wrap gap-x-3 gap-y-2 border-b border-edge">
 
         <div className="flex items-center gap-2">
           {branches.length > 0 && (
@@ -487,7 +487,7 @@ export default function FileTreePage() {
                   active={selectedBranch === null}
                   onClick={() => { setSelectedBranch(null); resetSelection(); setBranchDropdownOpen(false) }}
                 />
-                <div className="h-px bg-[#2d3748] mx-2" />
+                <div className="h-px bg-edge mx-2" />
                 {branches.map(b => (
                   <DropdownItem
                     key={b.name}
@@ -507,10 +507,10 @@ export default function FileTreePage() {
             onToggle={() => setSnapshotDropdownOpen(p => !p)}
             triggerLabel={
               <span className="flex flex-col items-start leading-none gap-1">
-                <span className="flex items-center gap-1.5 text-[0.65rem] text-slate-400">
+                <span className="flex items-center gap-1.5 text-caption text-slate-400">
                   Snapshot {effectiveIdx + 1}
                   {effectiveIdx === displayedSnapshots.length - 1 && (
-                    <span className="text-[0.6rem] font-bold uppercase tracking-wider text-[#2E86C1]">latest</span>
+                    <span className="text-micro font-bold uppercase tracking-wider text-accent">latest</span>
                   )}
                 </span>
                 {currentSnapshot?.details.snapshot_id && (
@@ -540,7 +540,7 @@ export default function FileTreePage() {
                 setTimeout(() => setCopiedSnapshotId(false), 2000)
               }}
               title="Copy snapshot ID"
-              className="p-1 rounded border border-[#2d3748] text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors cursor-pointer"
+              className="p-1 rounded border border-edge text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors cursor-pointer"
             >
               {copiedSnapshotId ? (
                 <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -556,12 +556,12 @@ export default function FileTreePage() {
           )}
 
           <div className="group relative">
-            <div className="w-4 h-4 rounded-full bg-[#2E86C1] text-white text-[10px] font-black flex items-center justify-center cursor-help hover:bg-[#2471a3] transition select-none">
+            <div className="w-4 h-4 rounded-full bg-accent text-white text-tiny font-black flex items-center justify-center cursor-help hover:bg-accent-dark transition select-none">
               i
             </div>
-            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-[#1a202c] text-slate-300 text-[0.7rem] p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed border border-[#2d3748]">
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-surface text-slate-300 text-detail p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed border border-edge">
               Snapshots are numbered in chronological order — Snapshot 1 is the oldest, the highest number is the latest.
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-8 border-transparent border-b-[#1a202c]" />
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-8 border-transparent border-b-surface" />
             </div>
           </div>
         </div>
@@ -571,14 +571,14 @@ export default function FileTreePage() {
           placeholder="Search partitions…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-[120px] max-w-xs text-sm bg-[#1a202c] border border-[#2d3748] text-[#e2e8f0] rounded-lg px-3 py-1.5 placeholder-slate-500 focus:outline-none focus:border-[#2E86C1]"
+          className="flex-1 min-w-30 max-w-xs text-sm bg-surface border border-edge text-ink rounded-lg px-3 py-1.5 placeholder-slate-500 focus:outline-none focus:border-accent"
         />
 
         <div className="ml-auto flex items-center gap-2">
 
-          <div className="flex items-center rounded-lg border border-[#2d3748] overflow-hidden">
+          <div className="flex items-center rounded-lg border border-edge overflow-hidden">
             <button
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition cursor-pointer ${viewMode === 'flat' ? 'bg-[#2E86C1] text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-[#252d3d]'}`}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition cursor-pointer ${viewMode === 'flat' ? 'bg-accent text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-surface-hover'}`}
               onClick={() => setViewMode('flat')}
               title="Flat list view"
             >
@@ -587,9 +587,9 @@ export default function FileTreePage() {
               </svg>
               Flat
             </button>
-            <div className="w-px h-full bg-[#2d3748]" />
+            <div className="w-px h-full bg-edge" />
             <button
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition cursor-pointer ${viewMode === 'tree' ? 'bg-[#2E86C1] text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-[#252d3d]'}`}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition cursor-pointer ${viewMode === 'tree' ? 'bg-accent text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-surface-hover'}`}
               onClick={() => setViewMode('tree')}
               title="Nested tree view"
             >
@@ -608,7 +608,7 @@ export default function FileTreePage() {
             onClick={expandAll}
             disabled={totalPartitions === 0}
             title="Expand all"
-            className="p-1.5 rounded border border-[#2d3748] text-slate-400 hover:text-slate-200 hover:border-slate-500 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="p-1.5 rounded border border-edge text-slate-400 hover:text-slate-200 hover:border-slate-500 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 5l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -619,7 +619,7 @@ export default function FileTreePage() {
             onClick={collapseAll}
             disabled={totalPartitions === 0}
             title="Collapse all"
-            className="p-1.5 rounded border border-[#2d3748] text-slate-400 hover:text-slate-200 hover:border-slate-500 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="p-1.5 rounded border border-edge text-slate-400 hover:text-slate-200 hover:border-slate-500 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 11l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
@@ -632,14 +632,14 @@ export default function FileTreePage() {
           <button
             onClick={() => setCheckedFiles(new Set(Object.values(partitionMap).flat()))}
             disabled={totalFiles === 0}
-            className="text-sm px-3 py-1.5 rounded-lg border border-[#2d3748] text-slate-400 hover:border-slate-500 hover:text-slate-200 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="text-sm px-3 py-1.5 rounded-lg border border-edge text-slate-400 hover:border-slate-500 hover:text-slate-200 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             Select all
           </button>
           <button
             onClick={() => setCheckedFiles(new Set())}
             disabled={checkedFiles.size === 0}
-            className="text-sm px-3 py-1.5 rounded-lg border border-[#2d3748] text-slate-400 hover:border-slate-500 hover:text-slate-200 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="text-sm px-3 py-1.5 rounded-lg border border-edge text-slate-400 hover:border-slate-500 hover:text-slate-200 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             Clear
           </button>
@@ -650,10 +650,10 @@ export default function FileTreePage() {
             onClick={copyPaths}
             disabled={checkedFiles.size === 0}
             className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition ${checkedFiles.size === 0
-              ? 'border-[#2d3748] text-slate-600 cursor-not-allowed'
+              ? 'border-edge text-slate-600 cursor-not-allowed'
               : copied
                 ? 'border-green-600 bg-green-900/30 text-green-400'
-                : 'border-[#2E86C1] text-[#2E86C1] hover:bg-[#1e3a5f] cursor-pointer'
+                : 'border-accent text-accent hover:bg-accent-muted cursor-pointer'
               }`}
           >
             {copied ? (
@@ -678,7 +678,7 @@ export default function FileTreePage() {
             <span className="text-xs text-slate-400 select-none whitespace-nowrap cursor-default">
               {totalPartitions} / {totalFiles}
             </span>
-            <div className="absolute top-full right-0 mt-2 hidden group-hover:flex flex-col gap-1 bg-[#1a202c] border border-[#2d3748] rounded-lg shadow-xl px-3 py-2 text-xs text-slate-300 whitespace-nowrap z-50">
+            <div className="absolute top-full right-0 mt-2 hidden group-hover:flex flex-col gap-1 bg-surface border border-edge rounded-lg shadow-xl px-3 py-2 text-xs text-slate-300 whitespace-nowrap z-50">
               <div className="absolute bottom-full right-3 border-8 border-transparent border-b-[#2d3748]" />
               <div className="flex items-center justify-between gap-4">
                 <span className="text-slate-500">Partitions</span>
@@ -705,16 +705,16 @@ export default function FileTreePage() {
           const someChecked = !allChecked && files.some(f => checkedFiles.has(f))
           const flatFolderLastModified = files.map(f => fileTimestampMap[f]).filter(Boolean).reduce((a, b) => (a > b ? a : b), null)
           return (
-            <div key={partition} className="bg-[#1a202c] rounded-lg border border-[#2d3748] overflow-hidden">
-              <div className="flex items-center px-4 py-2.5 hover:bg-[#252d3d] transition cursor-pointer" onClick={() => toggleCollapse(partition)}>
+            <div key={partition} className="bg-surface rounded-lg border border-edge overflow-hidden">
+              <div className="flex items-center px-4 py-2.5 hover:bg-surface-hover transition cursor-pointer" onClick={() => toggleCollapse(partition)}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <svg
-                    className={`w-3.5 h-3.5 text-[#2E86C1] shrink-0 transition-transform ${collapsed[partition] ? '-rotate-90' : ''}`}
+                    className={`w-3.5 h-3.5 text-accent shrink-0 transition-transform ${collapsed[partition] ? '-rotate-90' : ''}`}
                     viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"
                   >
                     <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span className="text-sm font-mono text-[#e2e8f0] break-all">{partition}</span>
+                  <span className="text-sm font-mono text-ink break-all">{partition}</span>
                 </div>
                 <div className="flex items-center gap-3 ml-4 shrink-0">
                   {flatFolderLastModified && (
@@ -722,7 +722,7 @@ export default function FileTreePage() {
                       {flatFolderLastModified}
                     </span>
                   )}
-                  <span className="text-[0.65rem] font-bold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
+                  <span className="text-caption font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full">
                     {files.length}
                   </span>
                   <input
@@ -737,7 +737,7 @@ export default function FileTreePage() {
                 </div>
               </div>
               {!collapsed[partition] && (
-                <div className="border-t border-[#2d3748] px-4 py-2 flex flex-col gap-1">
+                <div className="border-t border-edge px-4 py-2 flex flex-col gap-1">
                   {files.map((filePath) => (
                     <FileRow
                       key={filePath}
@@ -758,8 +758,8 @@ export default function FileTreePage() {
         {viewMode === 'tree' && totalPartitions > 0 && (
           <>
             {treeData.files.length > 0 && (
-              <div className="bg-[#1a202c] rounded-lg border border-[#2d3748] px-4 py-2 flex flex-col gap-1">
-                <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1">(unpartitioned)</span>
+              <div className="bg-surface rounded-lg border border-edge px-4 py-2 flex flex-col gap-1">
+                <span className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-1">(unpartitioned)</span>
                 {treeData.files.map(filePath => (
                   <FileRow
                     key={filePath}

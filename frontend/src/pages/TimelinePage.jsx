@@ -89,10 +89,10 @@ function DiffRow({ label, before, after }) {
     const allKeys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])).sort()
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">
+        <span className="text-caption font-bold text-slate-500 uppercase tracking-widest">
           {label.replace(/_/g, ' ')}
         </span>
-        <div className="bg-[#13171f] border border-[#2d3748] rounded-lg py-3 font-mono text-[0.7rem] overflow-x-auto shadow-2xl flex flex-col">
+        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-detail overflow-x-auto shadow-2xl flex flex-col">
           <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
           <div className="flex flex-col">
             {allKeys.map(key => {
@@ -158,24 +158,24 @@ function DiffRow({ label, before, after }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">
+      <span className="text-caption font-bold text-slate-500 uppercase tracking-wider">
         {label.replace(/_/g, ' ')}
       </span>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="text-[0.55rem] text-red-400 font-bold uppercase mb-0.5">Before</div>
+          <div className="text-tiny text-red-400 font-bold uppercase mb-0.5">Before</div>
           <div className="relative">
             {before && <CopyIconButton text={tryFormat(before)} className="absolute top-1.5 right-1.5 z-10" />}
-            <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
+            <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-8">
               {tryFormat(before) ?? '—'}
             </pre>
           </div>
         </div>
         <div>
-          <div className="text-[0.55rem] text-green-400 font-bold uppercase mb-0.5">After</div>
+          <div className="text-tiny text-green-400 font-bold uppercase mb-0.5">After</div>
           <div className="relative">
             {after && <CopyIconButton text={tryFormat(after)} className="absolute top-1.5 right-1.5 z-10" />}
-            <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
+            <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-8">
               {tryFormat(after) ?? '—'}
             </pre>
           </div>
@@ -187,7 +187,7 @@ function DiffRow({ label, before, after }) {
 
 function PanelCopyRow({ label, value, valueClassName = '' }) {
   return (
-    <div className="flex flex-col gap-1 py-1.5 border-b border-[#2d3748] last:border-0">
+    <div className="flex flex-col gap-1 py-1.5 border-b border-edge last:border-0">
       <span className="text-xs text-slate-400">{label}</span>
       <CopyableValue value={value} mono className={valueClassName} />
     </div>
@@ -199,7 +199,7 @@ function SnapSummary({ summary }) {
   if (rows.length === 0) return null
   return (
     <div>
-      <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
+      <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
       <div className="flex flex-col gap-2">
         {rows.map(({ key, value }) => (
           <PanelCopyRow key={key} label={key} value={value} />
@@ -371,7 +371,7 @@ export default function TimelinePage() {
 
   if (events.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#0d1117]">
+      <div className="flex-1 flex items-center justify-center bg-canvas">
         <p className="text-slate-500 text-sm italic">No metadata history available.</p>
       </div>
     )
@@ -416,7 +416,7 @@ export default function TimelinePage() {
   const closePanel = () => setSelected(null)
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-canvas overflow-hidden relative">
 
       <div className="shrink-0 px-8 pt-5 flex items-center gap-5">
         {[['A', 'Write'], ['C', 'Branch Write'], ['B', 'Metadata Op'], ['init', 'Initial State']].map(([type, lbl]) => (
@@ -436,11 +436,11 @@ export default function TimelinePage() {
               <div key={i} className="flex items-center" ref={el => { itemRefs.current[i] = el }}>
                 {i > 0 && (
                   <div className="flex flex-col items-center shrink-0">
-                    <div className="text-[0.6rem] text-slate-500 mb-1">
+                    <div className="text-micro text-slate-500 mb-1">
                       {formatDuration(events[i - 1].details.timestamp, events[i].details.timestamp)}
                     </div>
                     <div className="flex items-center">
-                      <div className="w-14 h-px bg-[#2d3748]" />
+                      <div className="w-14 h-px bg-edge" />
                       <div style={{
                         width: 0, height: 0,
                         borderTop: '4px solid transparent',
@@ -454,7 +454,7 @@ export default function TimelinePage() {
                   className="flex flex-col items-center gap-2 cursor-pointer group select-none"
                   onClick={() => setSelected(event)}
                 >
-                  <div className="text-center max-w-[160px]">
+                  <div className="text-center max-w-40">
                     <div
                       className="text-xs font-mono font-bold leading-tight break-all"
                       style={{ color: colorFor(event.type) }}
@@ -467,11 +467,11 @@ export default function TimelinePage() {
                     className={`w-11 h-11 rounded-full border-2 shadow-lg transition-transform group-hover:scale-110 shrink-0 ${selected === event ? 'scale-110' : ''}`}
                     style={{ backgroundColor: colorFor(event.type), borderColor: colorFor(event.type), ...(selected === event ? { outline: '2px solid white', outlineOffset: '3px' } : {}) }}
                   />
-                  <div className="text-center max-w-[160px]">
+                  <div className="text-center max-w-40">
                     {ts && (
                       <>
-                        <div className="text-[0.7rem] text-slate-500 leading-tight">{ts.date}</div>
-                        <div className="text-[0.7rem] text-slate-600 leading-tight">{ts.time}</div>
+                        <div className="text-detail text-slate-500 leading-tight">{ts.date}</div>
+                        <div className="text-detail text-slate-600 leading-tight">{ts.time}</div>
                       </>
                     )}
                   </div>
@@ -492,7 +492,7 @@ export default function TimelinePage() {
               <div className="font-bold text-sm" style={{ color: colorFor(selected.type) }}>
                 {labelFor(selected.type)}
               </div>
-              <div className="text-xs font-mono text-[#e2e8f0] mt-0.5 break-all">
+              <div className="text-xs font-mono text-ink mt-0.5 break-all">
                 {selected.details.file_path}
               </div>
               {formatTs(selected.details.timestamp) && (
@@ -525,7 +525,7 @@ export default function TimelinePage() {
                   <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
-              <div className="mt-2 border-t border-[#2d3748] pt-4">
+              <div className="mt-2 border-t border-edge pt-4">
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
                 <DiffList diff={selected.diff} />
               </div>
@@ -548,7 +548,7 @@ export default function TimelinePage() {
               )}
               {parseProperties(selected.details.properties).length > 0 && (
                 <div>
-                  <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
+                  <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
                   <div className="flex flex-col gap-2">
                     {parseProperties(selected.details.properties).map(({ key, value }) => (
                       <PanelCopyRow key={key} label={key} value={value} />

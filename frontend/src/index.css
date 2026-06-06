@@ -1,36 +1,83 @@
 @import "tailwindcss";
 
+@theme {
+  --color-canvas: #0d1117;
+  --color-surface: #1a202c;
+  --color-surface-deep: #151c2c;
+  --color-edge: #2d3748;
+  --color-edge-hover: #3d4a5c;
+  --color-accent: #2e86c1;
+  --color-accent-dark: #2471a3;
+  --color-accent-muted: #1e3a5f;
+  --color-ink: #e2e8f0;
+  --color-ink-bright: #f8fafc;
+  --color-surface-hover: #252d3d;
+  --color-diff-bg: #13171f;
+
+  --spacing-nav: 4rem;
+  --spacing-panel-default: 25rem;
+  --spacing-panel-min: 20rem;
+  --spacing-panel-relaxed: 35rem;
+  --spacing-panel-gutter: 2rem;
+  --spacing-25: 6.25rem;
+  --spacing-30: 7.5rem;
+  --spacing-45: 11.25rem;
+  --spacing-85: 21.25rem;
+
+  --font-size-tiny: 0.55rem;
+  --font-size-micro: 0.6rem;
+  --font-size-caption: 0.65rem;
+  --font-size-detail: 0.7rem;
+}
+
+@utility h-graph {
+  height: calc(100vh - var(--spacing-nav));
+}
+
+@utility max-h-panel {
+  max-height: calc(100% - var(--spacing-panel-gutter));
+}
+
+@utility max-w-panel {
+  max-width: calc(100% - var(--spacing-panel-gutter));
+}
+
+@utility bg-graph-grid {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(circle, var(--color-edge) 1px, transparent 1px);
+  background-size: 1.5rem 1.5rem;
+}
 
 :root {
-  --color-dark-main: #0d1110;
-  --color-dark-soft: #2d3748;
+  --color-dark-main: var(--color-canvas);
+  --color-dark-soft: var(--color-edge);
 }
 
 html {
-  background-color: #0d1117;
-  color: #e2e8f0;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   color-scheme: dark;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2d3748 #0d1117;
+  scrollbar-color: var(--color-edge) var(--color-canvas);
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 0.375rem;
+  height: 0.375rem;
 }
 
 *::-webkit-scrollbar-track {
-  background: #0d1117;
+  background: var(--color-canvas);
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #2d3748;
+  background-color: var(--color-edge);
   border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #3d4a5c;
+  background-color: var(--color-edge-hover);
 }
