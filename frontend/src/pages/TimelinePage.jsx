@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import CopyIconButton from '../components/CopyIconButton'
+import CopyableValue from '../components/CopyableValue'
+import ResizableSidePanel from '../components/ResizableSidePanel'
 import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
 import { parseUtcDate } from '../utils/dateUtils'
@@ -161,17 +164,32 @@ function DiffRow({ label, before, after }) {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <div className="text-[0.55rem] text-red-400 font-bold uppercase mb-0.5">Before</div>
-          <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {tryFormat(before) ?? '—'}
-          </pre>
+          <div className="relative">
+            {before && <CopyIconButton text={tryFormat(before)} className="absolute top-1.5 right-1.5 z-10" />}
+            <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
+              {tryFormat(before) ?? '—'}
+            </pre>
+          </div>
         </div>
         <div>
           <div className="text-[0.55rem] text-green-400 font-bold uppercase mb-0.5">After</div>
-          <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {tryFormat(after) ?? '—'}
-          </pre>
+          <div className="relative">
+            {after && <CopyIconButton text={tryFormat(after)} className="absolute top-1.5 right-1.5 z-10" />}
+            <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
+              {tryFormat(after) ?? '—'}
+            </pre>
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PanelCopyRow({ label, value, valueClassName = '' }) {
+  return (
+    <div className="flex flex-col gap-1 py-1.5 border-b border-[#2d3748] last:border-0">
+      <span className="text-xs text-slate-400">{label}</span>
+      <CopyableValue value={value} mono className={valueClassName} />
     </div>
   )
 }
@@ -182,12 +200,9 @@ function SnapSummary({ summary }) {
   return (
     <div>
       <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         {rows.map(({ key, value }) => (
-          <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-            <span className="text-xs text-slate-400">{key}</span>
-            <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
-          </div>
+          <PanelCopyRow key={key} label={key} value={value} />
         ))}
       </div>
     </div>
@@ -398,8 +413,10 @@ export default function TimelinePage() {
     }
   }, [])
 
+  const closePanel = () => setSelected(null)
+
   return (
-    <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden relative">
 
       <div className="shrink-0 px-8 pt-5 flex items-center gap-5">
         {[['A', 'Write'], ['C', 'Branch Write'], ['B', 'Metadata Op'], ['init', 'Initial State']].map(([type, lbl]) => (
@@ -466,139 +483,82 @@ export default function TimelinePage() {
       </div>
 
       {selected && (
-        <div
-          className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center font-sans"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="w-[60vw] min-w-[420px] max-w-[860px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ borderLeft: `4px solid ${colorFor(selected.type)}` }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] shrink-0">
-              <div className="min-w-0 pr-4">
-                <div className="font-bold text-sm" style={{ color: colorFor(selected.type) }}>
-                  {labelFor(selected.type)}
-                </div>
-                <div className="text-xs font-mono text-[#e2e8f0] mt-0.5 break-all">
-                  {selected.details.file_path}
-                </div>
-                {formatTs(selected.details.timestamp) && (
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {formatTs(selected.details.timestamp).full}
-                  </div>
-                )}
+        <ResizableSidePanel
+          ref={popupScrollRef}
+          accentColor={colorFor(selected.type)}
+          onClose={closePanel}
+          header={(
+            <div className="min-w-0 pr-4">
+              <div className="font-bold text-sm" style={{ color: colorFor(selected.type) }}>
+                {labelFor(selected.type)}
               </div>
-              <button
-                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-sm cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
-                onClick={() => setSelected(null)}
-              >
-                ✕
-              </button>
+              <div className="text-xs font-mono text-[#e2e8f0] mt-0.5 break-all">
+                {selected.details.file_path}
+              </div>
+              {formatTs(selected.details.timestamp) && (
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {formatTs(selected.details.timestamp).full}
+                </div>
+              )}
             </div>
-
-            <div ref={popupScrollRef} className="overflow-y-auto px-6 py-5 flex flex-col gap-5">
-
-              {selected.type === 'A' && (
+          )}
+        >
+          {selected.type === 'A' && (
+            <>
+              <PanelCopyRow label="Snapshot ID" value={selected.snapshotId} />
+              {selectedSnap && (
                 <>
-                  <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                    <span className="text-xs text-slate-400">Snapshot ID</span>
-                    <span className="text-xs font-mono text-[#e2e8f0]">{selected.snapshotId ?? '—'}</span>
-                  </div>
-                  {selectedSnap && (
-                    <>
-                      <div>
-                        <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                        <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                          {selectedSnap.operation ?? '—'}
-                        </span>
-                      </div>
-                      <SnapSummary summary={selectedSnap.summary} />
-                    </>
-                  )}
+                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
+            </>
+          )}
 
-              {selected.type === 'C' && (
+          {selected.type === 'C' && (
+            <>
+              <PanelCopyRow label="Branch Name" value={selected.branchName} />
+              <PanelCopyRow label="Snapshot ID" value={selected.snapshotId} />
+              {selectedSnap && (
                 <>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                      <span className="text-xs text-slate-400">Branch Name</span>
-                      <span className="text-xs font-bold text-[#D97706] bg-[#3a200a] px-2 py-0.5 rounded">{selected.branchName ?? '—'}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                      <span className="text-xs text-slate-400">Snapshot ID</span>
-                      <span className="text-xs font-mono text-[#e2e8f0]">{selected.snapshotId ?? '—'}</span>
-                    </div>
-                    {selectedSnap && (
-                      <>
-                        <div>
-                          <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                          <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                            {selectedSnap.operation ?? '—'}
-                          </span>
-                        </div>
-                        <SnapSummary summary={selectedSnap.summary} />
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-4 border-t border-[#2d3748] pt-4">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
-                    <DiffList diff={selected.diff} />
-                  </div>
+                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
+              <div className="mt-2 border-t border-[#2d3748] pt-4">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
+                <DiffList diff={selected.diff} />
+              </div>
+            </>
+          )}
 
-              {selected.type === 'B' && <DiffList diff={selected.diff} />}
+          {selected.type === 'B' && <DiffList diff={selected.diff} />}
 
-              {selected.type === 'init' && (
+          {selected.type === 'init' && (
+            <>
+              <PanelCopyRow label="Snapshot ID" value={selected.details.snapshot_id} />
+              <PanelCopyRow label="Schema ID" value={selected.details.current_schema_id} />
+              <PanelCopyRow label="Spec ID" value={selected.details.partition_spec_id} />
+              <PanelCopyRow label="Sort Order ID" value={selected.details.sort_order_id} />
+              {selectedSnap && (
                 <>
-                  <div className="flex flex-col">
-                    {[
-                      ['Snapshot ID', selected.details.snapshot_id],
-                      ['Schema ID', selected.details.current_schema_id],
-                      ['Spec ID', selected.details.partition_spec_id],
-                      ['Sort Order ID', selected.details.sort_order_id],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-                        <span className="text-xs text-slate-400">{label}</span>
-                        <span className="text-xs font-mono text-[#e2e8f0]">{value ?? '—'}</span>
-                      </div>
+                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
+                </>
+              )}
+              {parseProperties(selected.details.properties).length > 0 && (
+                <div>
+                  <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
+                  <div className="flex flex-col gap-2">
+                    {parseProperties(selected.details.properties).map(({ key, value }) => (
+                      <PanelCopyRow key={key} label={key} value={value} />
                     ))}
                   </div>
-
-                  {selectedSnap && (
-                    <>
-                      <div>
-                        <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                        <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                          {selectedSnap.operation ?? '—'}
-                        </span>
-                      </div>
-                      <SnapSummary summary={selectedSnap.summary} />
-                    </>
-                  )}
-
-                  {parseProperties(selected.details.properties).length > 0 && (
-                    <div>
-                      <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
-                      <div className="flex flex-col">
-                        {parseProperties(selected.details.properties).map(({ key, value }) => (
-                          <div key={key} className="flex justify-between items-start gap-4 py-1.5 border-b border-[#2d3748] last:border-0">
-                            <span className="text-xs font-mono text-[#2E86C1] shrink-0">{key}</span>
-                            <span className="text-xs text-[#e2e8f0] text-right break-all">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
-
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+        </ResizableSidePanel>
       )}
     </div>
   )

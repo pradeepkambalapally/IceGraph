@@ -90,9 +90,22 @@ const SECTIONS = [
         <div className="space-y-2">
           <h3 className="text-white font-semibold">Interactions</h3>
           <ul className="list-disc list-inside space-y-1">
-            <li>Click a node to select it and inspect its details in the side panel</li>
+            <li>Click a node to select it and open its details in the side panel</li>
             <li>Drag a node to reposition it</li>
             <li>Scroll to zoom, drag the background to pan</li>
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Details panel</h3>
+          <p>
+            The panel on the right lists every metadata field for the selected node. Use it to read file paths,
+            snapshot IDs, partition values, and other properties without leaving the graph.
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong className="text-white">Resize</strong> — drag the grip handle on the left edge of the panel to widen it. Wider panels give text fields more room and show more lines before you need to expand a field.</li>
+            <li><strong className="text-white">Fullscreen</strong> — click the expand button in the panel header to fill the graph area. Click the compress button or press <strong className="text-white">Esc</strong> to exit.</li>
+            <li><strong className="text-white">Copy</strong> — click the clipboard icon inside any field to copy its value.</li>
+            <li><strong className="text-white">Long values</strong> — fields with many lines can be expanded or collapsed individually with <strong className="text-white">Show all</strong> / <strong className="text-white">Collapse</strong>.</li>
           </ul>
         </div>
         <div className="space-y-2">
@@ -117,6 +130,7 @@ const SECTIONS = [
         </p>
         <ul className="list-disc list-inside space-y-1">
           <li>Column IDs are stable even when columns are renamed — useful for tracing schema evolution</li>
+          <li><strong className="text-white">Overview</strong> fields include a clipboard icon to copy individual values</li>
         </ul>
       </div>
     ),
@@ -143,6 +157,14 @@ const SECTIONS = [
           Use the Timeline to pinpoint when a large write happened, spot unexpected deletes, or
           verify that a compaction job ran as expected.
         </p>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Details panel</h3>
+          <p>
+            Click a timeline event to open its details in a panel on the right — the same panel used in
+            Graph view. Drag the left-edge grip to widen it, use fullscreen to expand, and copy field
+            values with the clipboard icon.
+          </p>
+        </div>
       </div>
     ),
   },
@@ -258,9 +280,9 @@ const SECTIONS = [
           <ShortcutRow keys={['Enter', 'Space']} desc="Jump to the main metadata node" />
           <ShortcutRow keys={['h', '←']} desc="Navigate to the selected node's parent(s)" />
           <ShortcutRow keys={['l', '→']} desc="Navigate to the selected node's child(ren)" />
-          <ShortcutRow keys={['j', '↓']} desc="Scroll down" />
-          <ShortcutRow keys={['k', '↑']} desc="Scroll up" />
-          <ShortcutRow keys={['Esc']} desc="Deselect the current node" />
+          <ShortcutRow keys={['j', '↓']} desc="Scroll the node details panel down (when open)" />
+          <ShortcutRow keys={['k', '↑']} desc="Scroll the node details panel up (when open)" />
+          <ShortcutRow keys={['Esc']} desc="Close the node details panel" />
         </div>
 
         <div className="space-y-1">

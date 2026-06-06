@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import CopyableValue from '../components/CopyableValue'
 import { FileType } from '../graphConstants'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 import { parseSummary } from '../utils/snapshotUtils'
@@ -19,9 +20,7 @@ function KV({ label, value, mono = false }) {
   return (
     <div className="flex flex-col gap-0.5 py-2 border-b border-[#2d3748] last:border-0 [&:nth-last-child(2)]:border-0">
       <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
-      <span className={`text-sm text-[#e2e8f0] break-all ${mono ? 'font-mono' : ''}`}>
-        {value ?? <span className="text-slate-600 italic">—</span>}
-      </span>
+      <CopyableValue value={value} mono={mono} />
     </div>
   )
 }

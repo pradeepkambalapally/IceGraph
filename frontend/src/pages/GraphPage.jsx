@@ -14,11 +14,15 @@ const NODE_FONT_SIZE = 80
 const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
 const LINK_FONT_SIZE = 60
 const LINK_FONT = `500 ${LINK_FONT_SIZE}px "system-ui"`
-const NODE_PADDING = 40
+const NODE_PADDING_X = 40
+const NODE_PADDING_Y = 28
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
 
 const STICKY_SECTION_LINE_COUNT_COLLAPSE = 15
+const STICKY_PANEL_WIDTH_DEFAULT = 400
+const STICKY_PANEL_WIDTH_MIN = 320
+const STICKY_PANEL_WIDTH_RELAXED = 560
 
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
@@ -51,7 +55,7 @@ function getLineage(nodeId, links) {
   return relatedNodes
 }
 
-function DetailRow({ r }) {
+function DetailRow({ r, relaxedCollapse = false }) {
   const tryParseJson = (str) => {
     try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
   }
@@ -62,36 +66,63 @@ function DetailRow({ r }) {
     displayValue = JSON.stringify(parsed, null, 2)
   }
 
-  const lineCount = displayValue.split('\n').length
+  const textToCopy = String(displayValue ?? '')
+  const lineCount = textToCopy.split('\n').length
   const isCollapsible = lineCount > STICKY_SECTION_LINE_COUNT_COLLAPSE
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(textToCopy)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-1 gap-2">
         <span className="block font-bold text-slate-500 text-[0.65rem] uppercase tracking-wider">
           {r.label}
         </span>
         {isCollapsible && (
           <button
             onClick={() => setIsCollapsed(p => !p)}
-            className="text-[0.6rem] font-bold uppercase tracking-wide text-[#2E86C1] hover:text-white transition ml-2 shrink-0"
+            className="text-[0.6rem] font-bold uppercase tracking-wide text-[#2E86C1] hover:text-white transition shrink-0"
           >
             {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
           </button>
         )}
       </div>
-      <span
-        className="block font-mono bg-[#0d1117] text-slate-200 px-3 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
-        style={isCollapsible && isCollapsed ? {
-          maxHeight: '10lh',
-          overflow: 'hidden',
-          maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-        } : {}}
-      >
-        {displayValue}
-      </span>
+      <div className="relative">
+        <button
+          onClick={handleCopy}
+          onMouseDown={e => e.preventDefault()}
+          title={copied ? 'Copied!' : 'Copy value'}
+          className="absolute top-2 right-2 z-10 p-1 rounded border border-[#2d3748] bg-[#1a202c]/90 text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors cursor-pointer"
+        >
+          {copied ? (
+            <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M3 8l3.5 3.5L13 4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="5" y="5" width="8" height="9" rx="1.5" />
+              <path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h1" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
+        <span
+          className="block font-mono bg-[#0d1117] text-slate-200 pl-3 pr-9 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
+          style={isCollapsible && isCollapsed ? {
+            maxHeight: relaxedCollapse ? '22lh' : '10lh',
+            overflow: 'hidden',
+            maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+          } : {}}
+        >
+          {textToCopy}
+        </span>
+      </div>
     </div>
   )
 }
@@ -109,6 +140,8 @@ export default function GraphPage() {
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNodeInternal] = useState(null)
   const [movementPopup, setMovementPopup] = useState(null)
+  const [panelWidth, setPanelWidth] = useState(STICKY_PANEL_WIDTH_DEFAULT)
+  const [isPanelFullscreen, setIsPanelFullscreen] = useState(false)
 
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
@@ -240,11 +273,40 @@ export default function GraphPage() {
     if (stickyPanelRef.current) stickyPanelRef.current.scrollTop = 0
   }, [])
 
+  const closeStickyPanel = useCallback(() => {
+    setStickyNode(null)
+    setIsPanelFullscreen(false)
+  }, [setStickyNode])
+
   const deselectNode = useCallback(() => {
     setHighlightNodes(new Set())
-    setStickyNode(null)
+    closeStickyPanel()
     history.replaceState({ graphSelection: null }, '')
-  }, [])
+  }, [closeStickyPanel])
+
+  const startPanelResize = useCallback((e) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = panelWidth
+    const maxWidth = Math.max(STICKY_PANEL_WIDTH_MIN, dimensions.width - 32)
+
+    const onMove = (ev) => {
+      const nextWidth = Math.min(maxWidth, Math.max(STICKY_PANEL_WIDTH_MIN, startWidth + (startX - ev.clientX)))
+      setPanelWidth(nextWidth)
+    }
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [panelWidth, dimensions.width])
 
   const resetView = useCallback(() => {
     deselectNode()
@@ -319,7 +381,7 @@ export default function GraphPage() {
         return
       }
 
-      if (e.key === 'Escape') { setStickyNode(null); return }
+      if (e.key === 'Escape') { closeStickyPanel(); return }
 
       if (isInspectModeRef.current) return
 
@@ -348,7 +410,7 @@ export default function GraphPage() {
       if (stickyScrollRafRef.current) cancelAnimationFrame(stickyScrollRafRef.current)
       if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
     }
-  }, [navigateTo, resetZoom, resetView])
+  }, [navigateTo, resetZoom, resetView, closeStickyPanel])
 
   useEffect(() => {
     if (!history.state || !('graphSelection' in history.state)) {
@@ -446,8 +508,8 @@ export default function GraphPage() {
 
     ctx.font = NODE_FONT
     if (!node.__pillW) {
-      const w = ctx.measureText(label).width + NODE_PADDING * 2
-      const h = NODE_FONT_SIZE + NODE_PADDING
+      const w = ctx.measureText(label).width + NODE_PADDING_X * 2
+      const h = NODE_FONT_SIZE + NODE_PADDING_Y * 2
       node.__pillW = w
       node.__pillH = h
     }
@@ -489,7 +551,7 @@ export default function GraphPage() {
 
   const paintPointerArea = useCallback((node, color, ctx) => {
     const w = node.__pillW || 40
-    const h = node.__pillH || 20
+    const h = node.__pillH || (NODE_FONT_SIZE + NODE_PADDING_Y * 2)
     ctx.fillStyle = color
     ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h)
   }, [])
@@ -669,26 +731,82 @@ export default function GraphPage() {
       {sticky && (
         <div
           ref={stickyPanelRef}
-          className="absolute top-4 right-4 w-[400px] max-h-[88vh] overflow-y-auto bg-[#1a202c] border-l-4 rounded-xl z-[1000] shadow-xl"
-          style={{ borderLeftColor: stickyNode.color }}
+          className={`overflow-y-auto bg-[#1a202c] z-[1000] shadow-xl ${
+            isPanelFullscreen
+              ? 'fixed top-[70px] left-0 right-0 bottom-0 border-l-4'
+              : 'absolute top-4 right-4 max-h-[88vh] rounded-xl'
+          }`}
+          style={{
+            borderLeftColor: isPanelFullscreen ? stickyNode.color : undefined,
+            width: isPanelFullscreen ? undefined : panelWidth,
+            maxWidth: isPanelFullscreen ? undefined : `calc(100% - 32px)`,
+            '--panel-accent': stickyNode.color,
+          }}
         >
-          <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[#2d3748]">
-            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title.toUpperCase()}</div>
-            <button
-              className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition shrink-0"
-              onClick={() => setStickyNode(null)}
-              onMouseDown={e => e.preventDefault()}
+          {!isPanelFullscreen && (
+            <div
+              onMouseDown={startPanelResize}
+              className="absolute left-0 top-0 bottom-0 w-7 cursor-ew-resize z-10 group rounded-l-xl"
+              style={{ borderLeft: `5px solid ${stickyNode.color}` }}
+              title="Drag left to widen"
             >
-              ✕
-            </button>
+              <div
+                className="absolute inset-0 rounded-l-xl pointer-events-none transition-colors bg-transparent group-hover:bg-[color-mix(in_srgb,var(--panel-accent)_25%,transparent)] group-active:bg-[color-mix(in_srgb,var(--panel-accent)_40%,transparent)]"
+                aria-hidden="true"
+              />
+              <div
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-7 flex items-center justify-center pointer-events-none text-white/85 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] group-hover:text-white transition-colors"
+                aria-hidden="true"
+              >
+                <svg className="w-4 h-7" viewBox="0 0 12 22" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M8 11H2M2 11L4.5 8M2 11L4.5 14" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M4 11h6M10 11L7.5 8M10 11L7.5 14" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          )}
+          <div className={`flex items-start justify-between pt-5 pb-4 border-b border-[#2d3748] ${isPanelFullscreen ? 'px-5' : 'pl-9 pr-5'}`}>
+            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title.toUpperCase()}</div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
+                onClick={() => setIsPanelFullscreen(p => !p)}
+                onMouseDown={e => e.preventDefault()}
+                title={isPanelFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              >
+                {isPanelFullscreen ? (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M2 6V2h4M10 2h4v4M2 10v4h4M14 10v4h-4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <button
+                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
+                onClick={closeStickyPanel}
+                onMouseDown={e => e.preventDefault()}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
           </div>
-          <div className="px-5 py-4 flex flex-col gap-3">
+          <div className={`py-4 flex flex-col gap-3 ${isPanelFullscreen ? 'px-5' : 'pl-9 pr-5'}`}>
             {isInspectMode && (
               <span className="inline-flex items-center gap-1.5 bg-[#2E86C1]/10 text-[#2E86C1] px-2.5 py-1 rounded-md text-[0.65rem] font-bold uppercase tracking-wide w-fit">
                 🔒 Locked View
               </span>
             )}
-            {sticky.rows.filter((r) => r.value !== '').map((r, i) => <DetailRow key={i} r={r} />)}
+            {sticky.rows.filter((r) => r.value !== '').map((r, i) => (
+              <DetailRow
+                key={i}
+                r={r}
+                relaxedCollapse={isPanelFullscreen || panelWidth >= STICKY_PANEL_WIDTH_RELAXED}
+              />
+            ))}
           </div>
         </div>
       )}
