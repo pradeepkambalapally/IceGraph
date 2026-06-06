@@ -71,7 +71,7 @@ docker run -e SPARK_REMOTE=sc://<spark-connect-ip>:15002 -p 5000:5000 icegraph
 
 - npm
 - UV (python)
-- Python 3.9
+- Python 3.12
 
 ### 1. Setup
 
