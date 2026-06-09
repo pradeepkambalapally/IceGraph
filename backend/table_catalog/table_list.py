@@ -1,3 +1,4 @@
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
@@ -5,23 +6,13 @@ from typing import Optional
 
 from pyspark.errors import AnalysisException
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
-from base_classes.utils import timed
+from base_classes.utils import get_spark_row_value, is_iceberg_table, qualify_table_name, timed
+from constants import TABLE_LIST_CACHE_TTL_SECONDS
 from spark_connect import open_spark_connect_session
 
-TABLE_LIST_CACHE_TTL_SECONDS = 60
-_table_list_cache: Optional[tuple[float, list[str]]] = None
-
-
-def _row_value(row, *names):
-    for name in names:
-        value = getattr(row, name, None)
-        if value is None and hasattr(row, "__getitem__"):
-            with suppress(Exception):
-                value = row[name]
-        if value is not None:
-            return value
-    return None
+table_list_cache_ttl_seconds = int(os.getenv("TABLE_LIST_CACHE_TTL_SECONDS", TABLE_LIST_CACHE_TTL_SECONDS))
 
 
 def _namespace_to_str(namespace) -> str:
@@ -34,7 +25,7 @@ def _sql_ident(*parts: str) -> str:
     return ".".join(f"`{part}`" for part in parts if part)
 
 
-def _catalog_conf(spark: SparkSession, catalog: str, suffix: str) -> Optional[str]:
+def _get_spark_catalog_config_value(spark: SparkSession, catalog: str, suffix: str) -> Optional[str]:
     with suppress(Exception):
         return spark.conf.get(f"spark.sql.catalog.{catalog}{suffix}")
     return None
@@ -47,49 +38,77 @@ def _default_catalog(spark: SparkSession) -> str:
 
 
 def _is_iceberg_spark_catalog(spark: SparkSession, catalog: str) -> bool:
-    impl = _catalog_conf(spark, catalog, "") or ""
+    impl = _get_spark_catalog_config_value(spark, catalog, "") or ""
     return "org.apache.iceberg.spark.SparkCatalog" in impl and "SparkSessionCatalog" not in impl
 
 
 def _list_catalogs(spark: SparkSession, default_catalog: str) -> list[str]:
     catalogs: list[str] = []
     with suppress(AnalysisException):
-        catalogs = [_row_value(row, "catalog") for row in spark.sql("SHOW CATALOGS").collect()]
+        catalogs = [get_spark_row_value(row, "catalog") for row in spark.sql("SHOW CATALOGS").collect()]
 
     catalogs = [catalog for catalog in catalogs if catalog]
     return catalogs or [default_catalog]
 
 
-def _list_namespaces(spark: SparkSession, catalog: str, default_catalog: str) -> list[str]:
-    seen: set[str] = set()
+def _collect_namespace_rows(spark: SparkSession, query: str) -> list[str]:
     namespaces: list[str] = []
+    seen: set[str] = set()
 
-    def add_namespace(namespace: Optional[str]) -> None:
-        if namespace and namespace not in seen:
-            seen.add(namespace)
-            namespaces.append(namespace)
+    with suppress(AnalysisException):
+        for row in spark.sql(query).collect():
+            namespace = _namespace_to_str(
+                get_spark_row_value(row, "namespace", "namespace_name", "databaseName")
+            )
+            if namespace and namespace not in seen:
+                seen.add(namespace)
+                namespaces.append(namespace)
 
-    queries = [f"SHOW NAMESPACES IN {_sql_ident(catalog)}"]
+    return namespaces
+
+
+def _list_namespaces(spark: SparkSession, catalog: str, default_catalog: str) -> list[str]:
+    namespaces = _collect_namespace_rows(spark, f"SHOW NAMESPACES IN {_sql_ident(catalog)}")
+    if namespaces:
+        return namespaces
+
     if catalog == default_catalog:
-        queries.extend(["SHOW NAMESPACES", "SHOW DATABASES"])
+        namespaces = _collect_namespace_rows(spark, "SHOW NAMESPACES")
+        if namespaces:
+            return namespaces
 
-    for query in queries:
-        with suppress(AnalysisException):
-            for row in spark.sql(query).collect():
-                add_namespace(_namespace_to_str(_row_value(row, "namespace", "namespace_name", "databaseName")))
+        namespaces = _collect_namespace_rows(spark, "SHOW DATABASES")
         if namespaces:
             return namespaces
 
     with suppress(Exception):
-        add_namespace(spark.catalog.currentDatabase())
+        current_database = spark.catalog.currentDatabase()
+        if current_database:
+            return [current_database]
 
-    return namespaces or ["default"]
+    return ["default"]
 
 
-def _qualify_table_name(catalog: str, namespace: str, table: str, default_catalog: str) -> str:
-    if catalog == default_catalog:
-        return f"{namespace}.{table}"
-    return f"{catalog}.{namespace}.{table}"
+def _collect_table_names_from_query(
+    spark: SparkSession,
+    query: str,
+    catalog: str,
+    namespace: str,
+    default_catalog: str,
+) -> set[str]:
+    tables: set[str] = set()
+
+    with suppress(AnalysisException):
+        df = spark.sql(query)
+        if "isTemporary" in df.columns:
+            df = df.filter(~F.col("isTemporary"))
+
+        for row in df.collect():
+            table_name = get_spark_row_value(row, "tableName", "table")
+            if table_name:
+                tables.add(qualify_table_name(catalog, namespace, table_name, default_catalog))
+
+    return tables
 
 
 def _collect_table_candidates_from_sql(
@@ -98,92 +117,88 @@ def _collect_table_candidates_from_sql(
     namespace: str,
     default_catalog: str,
 ) -> set[str]:
-    tables: set[str] = set()
-    queries = [f"SHOW TABLES IN {_sql_ident(catalog, namespace)}"]
+    tables = _collect_table_names_from_query(
+        spark,
+        f"SHOW TABLES IN {_sql_ident(catalog, namespace)}",
+        catalog,
+        namespace,
+        default_catalog,
+    )
+    if tables:
+        return tables
 
     if catalog == default_catalog:
-        queries.append(f"SHOW TABLES IN {_sql_ident(namespace)}")
-
-    for query in queries:
-        with suppress(AnalysisException):
-            for row in spark.sql(query).collect():
-                table_name = _row_value(row, "tableName", "table")
-                if not table_name:
-                    continue
-
-                is_temporary = _row_value(row, "isTemporary")
-                if is_temporary in (True, "true"):
-                    continue
-
-                tables.add(_qualify_table_name(catalog, namespace, table_name, default_catalog))
-
-        if tables:
-            return tables
+        return _collect_table_names_from_query(
+            spark,
+            f"SHOW TABLES IN {_sql_ident(namespace)}",
+            catalog,
+            namespace,
+            default_catalog,
+        )
 
     return tables
 
 
-def _is_iceberg_table(spark: SparkSession, table_name: str) -> bool:
-    with suppress(AnalysisException, AttributeError, IndexError):
-        provider_row = (
-            spark.sql(f"DESCRIBE FORMATTED {table_name}")
-            .filter("col_name = 'Provider'")
-            .collect()
-        )
-        if provider_row:
-            return provider_row[0].data_type.lower().strip() == "iceberg"
-    return False
+class TableListCollector:
+    _cache: Optional[tuple[float, list[str]]] = None
+
+    def __init__(self):
+        self._spark = open_spark_connect_session()
+
+    @timed
+    def collect(self) -> list[str]:
+        now = time.time()
+        if (
+            TableListCollector._cache
+            and now - TableListCollector._cache[0] < table_list_cache_ttl_seconds
+        ):
+            return TableListCollector._cache[1]
+
+        candidates, iceberg_only = self._collect_candidates()
+        if iceberg_only:
+            result = sorted(candidates)
+        else:
+            result = sorted(self._filter_iceberg_tables(candidates))
+
+        TableListCollector._cache = (now, result)
+        return result
+
+    def _collect_candidates(self) -> tuple[set[str], bool]:
+        candidates: set[str] = set()
+        default_catalog = _default_catalog(self._spark)
+        catalogs = _list_catalogs(self._spark, default_catalog)
+        iceberg_only = all(_is_iceberg_spark_catalog(self._spark, catalog) for catalog in catalogs)
+
+        for catalog in catalogs:
+            for namespace in _list_namespaces(self._spark, catalog, default_catalog):
+                candidates.update(
+                    _collect_table_candidates_from_sql(self._spark, catalog, namespace, default_catalog)
+                )
+
+        return candidates, iceberg_only
+
+    def _filter_iceberg_tables(self, candidates: set[str]) -> list[str]:
+        if not candidates:
+            return []
+
+        if len(candidates) == 1:
+            table = next(iter(candidates))
+            return [table] if is_iceberg_table(self._spark, table) else []
+
+        loadable: list[str] = []
+        max_workers = min(len(candidates), 8)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(is_iceberg_table, self._spark, table): table for table in candidates
+            }
+            for future in as_completed(futures):
+                table = futures[future]
+                if future.result():
+                    loadable.append(table)
+
+        return loadable
 
 
-def _filter_iceberg_tables(spark: SparkSession, candidates: set[str]) -> list[str]:
-    if not candidates:
-        return []
-
-    if len(candidates) == 1:
-        table = next(iter(candidates))
-        return [table] if _is_iceberg_table(spark, table) else []
-
-    loadable: list[str] = []
-    max_workers = min(len(candidates), 8)
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_is_iceberg_table, spark, table): table for table in candidates}
-        for future in as_completed(futures):
-            table = futures[future]
-            if future.result():
-                loadable.append(table)
-
-    return loadable
-
-
-def _collect_candidates(spark: SparkSession) -> tuple[set[str], bool]:
-    candidates: set[str] = set()
-    default_catalog = _default_catalog(spark)
-    catalogs = _list_catalogs(spark, default_catalog)
-    iceberg_only = all(_is_iceberg_spark_catalog(spark, catalog) for catalog in catalogs)
-
-    for catalog in catalogs:
-        for namespace in _list_namespaces(spark, catalog, default_catalog):
-            candidates.update(_collect_table_candidates_from_sql(spark, catalog, namespace, default_catalog))
-
-    return candidates, iceberg_only
-
-
-@timed
 def collect_table_list() -> list[str]:
-    global _table_list_cache
-
-    now = time.time()
-    if _table_list_cache and now - _table_list_cache[0] < TABLE_LIST_CACHE_TTL_SECONDS:
-        return _table_list_cache[1]
-
-    spark = open_spark_connect_session()
-    candidates, iceberg_only = _collect_candidates(spark)
-
-    if iceberg_only:
-        result = sorted(candidates)
-    else:
-        result = sorted(_filter_iceberg_tables(spark, candidates))
-
-    _table_list_cache = (now, result)
-    return result
+    return TableListCollector().collect()

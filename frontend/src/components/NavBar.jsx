@@ -3,7 +3,7 @@ import { NavLink, useLocation, useMatch, useNavigate, useSearchParams } from 're
 import logo from '../assets/icegraph.png'
 import { useTableSpecs } from '../context/TableSpecsContext'
 import { cacheData, clearCachedData } from '../utils/cacheUtils'
-import { IS_MOCK, MOCK_HOME, MOCK_HOME_ROUTE } from '../appConstants'
+import { BASE_PATH, IS_MOCK, MOCK_HOME, MOCK_HOME_ROUTE } from '../appConstants'
 
 export default function NavBar() {
   const location = useLocation()
@@ -68,7 +68,6 @@ export default function NavBar() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [isTablePage, navigate, location.search])
 
-
   const tabSearch = location.search
 
   function openTablePicker() {
@@ -104,12 +103,16 @@ export default function NavBar() {
     const updatedHistory = [...new Set([trimmed, ...history])].slice(0, 5)
     localStorage.setItem('tableHistory', JSON.stringify(updatedHistory))
 
+    const tableParam = encodeURIComponent(trimmed)
+    let targetUrl
     if (IS_MOCK) {
       const tab = location.pathname.match(/\/table\/([^/]+)/)?.[1] || 'graph'
-      navigate(`/table/${tab}?table=${encodeURIComponent(trimmed)}`)
+      targetUrl = `${BASE_PATH}/table/${tab}?table=${tableParam}`
     } else {
-      navigate(`/snapshots-selection?table=${encodeURIComponent(trimmed)}`)
+      targetUrl = `${BASE_PATH}/snapshots-selection?table=${tableParam}`
     }
+
+    window.open(targetUrl, '_blank', 'noopener,noreferrer')
 
     setTablePickerOpen(false)
     setMenuOpen(false)

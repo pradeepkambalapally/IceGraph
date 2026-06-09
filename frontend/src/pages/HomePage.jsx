@@ -7,6 +7,7 @@ export default function HomePage() {
   const [tableName, setTableName] = useState('')
   const [history, setHistory] = useState([])
   const [catalogTables, setCatalogTables] = useState(null)
+  const [catalogFilter, setCatalogFilter] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState(null)
   const navigate = useNavigate()
@@ -29,9 +30,14 @@ export default function HomePage() {
     navigate(`/snapshots-selection?${params.toString()}`)
   }
 
+  const filteredCatalogTables = catalogTables?.filter(name =>
+    name.toLowerCase().includes(catalogFilter.trim().toLowerCase()),
+  ) ?? []
+
   async function fetchCatalogTables() {
     setCatalogLoading(true)
     setCatalogError(null)
+    setCatalogFilter('')
 
     try {
       const res = await fetch('/api/v1/tables')
@@ -103,8 +109,21 @@ export default function HomePage() {
                   {catalogTables.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-slate-400">No tables found in the catalog.</p>
                   ) : (
+                    <>
+                      <div className="px-3 py-2 border-b border-edge bg-surface-hover">
+                        <input
+                          type="text"
+                          value={catalogFilter}
+                          onChange={e => setCatalogFilter(e.target.value)}
+                          placeholder="Filter tables…"
+                          className="w-full border border-edge bg-edge rounded-md px-3 py-1.5 text-xs text-ink placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"
+                        />
+                      </div>
+                      {filteredCatalogTables.length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-slate-400">No tables match your filter.</p>
+                      ) : (
                     <ul className="max-h-48 overflow-y-auto divide-y divide-edge">
-                      {catalogTables.map(name => (
+                      {filteredCatalogTables.map(name => (
                         <li key={name}>
                           <button
                             type="button"
@@ -120,6 +139,8 @@ export default function HomePage() {
                         </li>
                       ))}
                     </ul>
+                      )}
+                    </>
                   )}
                 </div>
               )}

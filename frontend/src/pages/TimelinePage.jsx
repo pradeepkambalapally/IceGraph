@@ -410,18 +410,6 @@ export default function TimelinePage() {
     })
   }
 
-  const resetView = () => {
-    const viewport = viewportRef.current
-    const content = contentRef.current
-    if (!viewport || !content) return
-    const { width, height } = contentNaturalSize(content, view.zoom)
-    setView({
-      zoom: 1,
-      panX: (viewport.clientWidth - width) / 2,
-      panY: (viewport.clientHeight - height) / 2,
-    })
-  }
-
   useEffect(() => {
     selectedRef.current = selected
     popupScrollTargetRef.current = 0
@@ -614,14 +602,6 @@ export default function TimelinePage() {
           onMouseDown={e => e.preventDefault()}
         >
           Fit Timeline
-        </button>
-        <button
-          type="button"
-          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-surface text-accent border border-accent hover:bg-edge"
-          onClick={resetView}
-          onMouseDown={e => e.preventDefault()}
-        >
-          Reset View
         </button>
         <div className="text-center text-tiny text-slate-500 tabular-nums">
           {Math.round(view.zoom * 100)}%

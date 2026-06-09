@@ -103,8 +103,8 @@ function TypeDisplay({ type }) {
 function FieldRow({ field }) {
   return (
     <div className="py-4 border-b border-edge last:border-0">
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-xs font-mono text-slate-500 w-6 text-right shrink-0">
+      <div className="flex items-center gap-4 mb-3">
+        <span className="text-xs font-mono text-slate-500 w-8 text-right shrink-0">
           {field['field-id'] ?? field.id ?? '—'}
         </span>
         <span className="text-sm font-bold text-ink-bright min-w-30">{field.name}</span>

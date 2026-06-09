@@ -692,7 +692,7 @@ export default function GraphPage() {
         <ResizableSidePanel
           ref={stickyPanelRef}
           accentColor={stickyNode.color}
-          title={sticky.title.toUpperCase()}
+          title={sticky.title}
           onClose={closeStickyPanel}
           onLayoutChange={setPanelLayout}
           maxContainerWidth={dimensions.width - remToPx(PANEL_GUTTER_REM)}

@@ -79,11 +79,10 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
 
   return (
     <div
-      ref={scrollRef}
-      className={`overflow-y-auto bg-surface z-[1000] shadow-xl ${
+      className={`flex bg-surface z-[1000] shadow-xl ${
         isFullscreen
-          ? 'fixed top-nav left-0 right-0 bottom-0 border-l-4'
-          : 'absolute top-4 right-4 max-h-panel max-w-panel rounded-xl'
+          ? 'fixed top-nav left-0 right-0 bottom-0 border-l-4 overflow-hidden'
+          : 'absolute top-4 right-4 max-h-panel max-w-panel rounded-xl overflow-hidden'
       }`}
       style={{
         borderLeftColor: isFullscreen ? accentColor : undefined,
@@ -94,7 +93,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
       {!isFullscreen && (
         <div
           onMouseDown={startResize}
-          className="absolute left-0 top-0 bottom-0 w-7 cursor-ew-resize z-10 group rounded-l-xl"
+          className="relative shrink-0 self-stretch w-7 cursor-ew-resize z-10 group rounded-l-xl"
           style={{ borderLeft: `${PANEL_ACCENT_BORDER_REM}rem solid ${accentColor}` }}
           title="Drag left to widen"
         >
@@ -113,33 +112,38 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
           </div>
         </div>
       )}
-      <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
-        {header ?? (
-          <div className="font-bold text-base text-ink pr-6 leading-snug min-w-0">{title}</div>
-        )}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
-            onClick={() => setIsFullscreen(p => !p)}
-            onMouseDown={e => e.preventDefault()}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-          >
-            <FullscreenToggleIcon compress={isFullscreen} />
-          </button>
-          <button
-            type="button"
-            className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
-            onClick={handleClose}
-            onMouseDown={e => e.preventDefault()}
-            title="Close"
-          >
-            ✕
-          </button>
+      <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
+        <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
+          {header ?? (
+            <div className="font-bold text-sm text-ink pr-6 leading-snug min-w-0">{title}</div>
+          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
+              onClick={() => setIsFullscreen(p => !p)}
+              onMouseDown={e => e.preventDefault()}
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              <FullscreenToggleIcon compress={isFullscreen} />
+            </button>
+            <button
+              type="button"
+              className="size-7 rounded-full bg-edge text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
+              onClick={handleClose}
+              onMouseDown={e => e.preventDefault()}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-      </div>
-      <div className={`py-4 flex flex-col gap-3 ${contentPad}`}>
-        {children}
+        <div
+          ref={scrollRef}
+          className={`py-4 flex flex-col gap-3 overflow-y-auto flex-1 min-h-0 ${contentPad}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )

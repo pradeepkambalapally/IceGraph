@@ -51,7 +51,7 @@ const SECTIONS = [
           <p>
             From the Home page, type the fully-qualified name of your Iceberg table
             (e.g. <code className="bg-surface-hover px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Continue.
-            You can also click <strong className="text-white">Browse catalog</strong> to list Iceberg tables from the Spark catalog. Only tables that IceGraph can load (verified via the same metadata path used for visualization) are shown.
+            You can also click <strong className="text-white">Browse catalog</strong> to list Iceberg tables from the Spark catalog. Use the filter field to narrow the list when many tables are available. Only tables that IceGraph can load (verified via the same metadata path used for visualization) are shown.
           </p>
         </div>
         <div className="space-y-2">
@@ -71,9 +71,10 @@ const SECTIONS = [
         <div className="space-y-2">
           <h3 className="text-white font-semibold">Switching tables</h3>
           <p>
-            While viewing a table, click the table name in the navbar to open a picker. Enter a new
+            While viewing a table, click the table name in the navbar to change tables. Enter a new
             table or use <strong className="text-white">Browse catalog</strong>, then click Continue to
-            choose a snapshot range for that table.
+            choose a snapshot range. IceGraph opens the new table in a separate browser tab so your
+            current graph stays loaded.
           </p>
         </div>
       </div>
@@ -172,7 +173,7 @@ const SECTIONS = [
             Scroll the mouse wheel to zoom in and out (text and nodes scale together, like Graph view).
             Drag the timeline background to pan. Use horizontal trackpad scroll or Shift + wheel to pan
             sideways without zooming. <strong className="text-white">Fit Timeline</strong> scales the full
-            history to the viewport; <strong className="text-white">Reset View</strong> returns to 100% zoom.
+            history to the viewport and centers it.
           </p>
         </div>
         <div className="space-y-2">
