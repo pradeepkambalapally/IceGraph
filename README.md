@@ -60,13 +60,14 @@ Then run with the same command:
 docker run -e SPARK_REMOTE=sc://<spark-connect-ip>:15002 -p 5000:5000 icegraph
 ```
 
-## Start Using Source Code
+## Start Using Source Code (Contributor to IceGraph)
 
 ### Prerequisites
 
 - npm
 - UV (python)
 - Python 3.9
+- Spark Connect server (Quick setup using https://github.com/YanivZalach/Docker_Spark_Connect_Iceberg)
 
 ### 1. Setup
 
