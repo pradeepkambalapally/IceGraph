@@ -103,16 +103,18 @@ function TypeDisplay({ type }) {
 function FieldRow({ field }) {
   return (
     <div className="py-4 border-b border-edge last:border-0">
-      <div className="flex items-center gap-4 mb-3">
-        <span className="text-xs font-mono text-slate-500 w-8 text-right shrink-0">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 mb-3">
+        <span className="text-xs font-mono text-slate-500 w-10 text-right shrink-0 tabular-nums">
           {field['field-id'] ?? field.id ?? '—'}
         </span>
-        <span className="text-sm font-bold text-ink-bright min-w-30">{field.name}</span>
-        {field.required === false && (
-          <span className="text-micro font-bold text-slate-400 uppercase ml-auto">optional</span>
+        <span className="text-sm font-bold text-ink-bright min-w-0">{field.name}</span>
+        {field.required === false ? (
+          <span className="text-micro font-bold text-slate-400 uppercase shrink-0">optional</span>
+        ) : (
+          <span />
         )}
       </div>
-      <div className="ml-9">
+      <div className="ml-14">
         <TypeDisplay type={field.type} />
       </div>
     </div>

@@ -115,7 +115,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
       <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
         <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
           {header ?? (
-            <div className="font-bold text-sm text-ink pr-6 leading-snug min-w-0">{title}</div>
+            <div className="font-bold text-xs text-ink pr-6 leading-snug min-w-0">{title}</div>
           )}
           <div className="flex items-center gap-2 shrink-0">
             <button

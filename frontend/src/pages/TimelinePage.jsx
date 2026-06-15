@@ -615,7 +615,7 @@ export default function TimelinePage() {
           onClose={closePanel}
           header={(
             <div className="min-w-0 pr-4">
-              <div className="font-bold text-sm" style={{ color: colorFor(selected.type) }}>
+              <div className="font-semibold text-xs" style={{ color: colorFor(selected.type) }}>
                 {labelFor(selected.type)}
               </div>
               <div className="text-xs font-mono text-ink mt-0.5 break-all">
