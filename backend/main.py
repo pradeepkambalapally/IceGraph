@@ -14,7 +14,9 @@ from constants import (
     COMPUTE_CLEANUP_TIME_SECONDS,
     MAX_NUMBER_OF_GRAPHS_TO_COMPUTE,
     MAX_SNAPSHOTS_TO_SHOW,
+    MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS,
 )
+from spark_connect import close_spark_connect_session
 from graph_normalizer.graph_normalizer import GraphNormalizer
 from icegraph_logger import logger
 from snapshot_map.snapshot_mapping import collect_snapshot_map
@@ -30,6 +32,7 @@ jobs: dict[str, dict] = {}
 max_number_of_graphs_to_compute = int(os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE", MAX_NUMBER_OF_GRAPHS_TO_COMPUTE))
 compute_cleanup_time_seconds = int(os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS))
 max_snapshots_to_show = int(os.getenv("MAX_SNAPSHOTS_TO_SHOW", MAX_SNAPSHOTS_TO_SHOW))
+max_graceful_shutdown_time_seconds = int(os.getenv("MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS", MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS))
 
 executor_pool = ThreadPoolExecutor(max_workers=max_number_of_graphs_to_compute)
 
@@ -185,9 +188,20 @@ def get_job_status(job_id):
         return jsonify({"key": job_id, "status": "processing"}), 202
 
 
+def _force_exit():
+    logger.error(f"Graceful shutdown timed out after {max_graceful_shutdown_time_seconds} seconds - forcing exit.")
+    os._exit(1)
+
+
 if __name__ == "__main__":
     try:
         app.run(host="0.0.0.0", port=APPLICATION_PORT)
+
     finally:
-        logger.info("Exiting program and killing all worker threads.")
-        os._exit(0)
+        watchdog = threading.Timer(max_graceful_shutdown_time_seconds, _force_exit)
+        watchdog.daemon = True
+        watchdog.start()
+
+        close_spark_connect_session()
+        executor_pool.shutdown(wait=False, cancel_futures=True)
+        logger.info("Compute executor pool shutdown")
