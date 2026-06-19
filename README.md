@@ -98,6 +98,7 @@ If you want to change the default values of the application, you can set the fol
 - `COMPUTE_CLEANUP_TIME_SECONDS`: The time to wait before cleaning up the computed graphs. Default is 12.
 - `MAX_DATA_FILES_TO_COLLECT`: The maximum number of data files to collect. Default is 5000.
 - `MAX_SNAPSHOTS_TO_COMPUTE`: The maximum number of snapshots to compute. Default is 50.
+- `MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS`: The time to wait before forcing an exit. Default is 10.
 
 ### 3. Run
 
