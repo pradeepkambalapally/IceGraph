@@ -10,11 +10,10 @@ from base_classes.utils import timed, verify_iceberg_table
 from constants import TABLE_LIST_CACHE_TTL_SECONDS
 from spark_connect import open_spark_connect_session
 from table_catalog.table_list_utils import (
-    collect_table_candidates_from_sql,
+    catalogs_are_iceberg_only,
+    collect_table_candidates,
     default_catalog,
-    is_iceberg_spark_catalog,
-    list_catalogs,
-    list_namespaces,
+    list_catalog_names,
 )
 
 table_list_cache_ttl_seconds = int(os.getenv("TABLE_LIST_CACHE_TTL_SECONDS", TABLE_LIST_CACHE_TTL_SECONDS))
@@ -45,19 +44,10 @@ class TableListCollector:
         return result
 
     def _collect_candidates(self) -> tuple[set[str], bool]:
-        candidates: set[str] = set()
         default_catalog_name = default_catalog(self._spark)
-        catalogs = list_catalogs(self._spark, default_catalog_name)
-        iceberg_only = all(is_iceberg_spark_catalog(self._spark, catalog) for catalog in catalogs)
-
-        for catalog in catalogs:
-            for namespace in list_namespaces(self._spark, catalog, default_catalog_name):
-                candidates.update(
-                    collect_table_candidates_from_sql(
-                        self._spark, catalog, namespace, default_catalog_name
-                    )
-                )
-
+        catalogs = list_catalog_names(self._spark, default_catalog_name)
+        candidates = collect_table_candidates(self._spark)
+        iceberg_only = catalogs_are_iceberg_only(self._spark, catalogs)
         return candidates, iceberg_only
 
     def _filter_iceberg_tables(self, candidates: set[str]) -> list[str]:

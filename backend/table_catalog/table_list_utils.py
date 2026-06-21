@@ -1,21 +1,15 @@
+import os
 from contextlib import suppress
 from typing import Optional
 
-from pyspark.errors import AnalysisException
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
 
-from base_classes.utils import get_spark_row_value, qualify_table_name
+from base_classes.utils import qualify_table_name
+from constants import TABLE_LIST_INCLUDE_SESSION_CATALOG
 
-
-def namespace_to_str(namespace) -> str:
-    if isinstance(namespace, (list, tuple)):
-        return ".".join(str(part) for part in namespace)
-    return str(namespace)
-
-
-def sql_ident(*parts: str) -> str:
-    return ".".join(f"`{part}`" for part in parts if part)
+table_list_include_session_catalog = os.getenv(
+    "TABLE_LIST_INCLUDE_SESSION_CATALOG", TABLE_LIST_INCLUDE_SESSION_CATALOG
+).lower() not in ("0", "false", "no", "off")
 
 
 def get_spark_catalog_config_value(spark: SparkSession, catalog: str, suffix: str) -> Optional[str]:
@@ -35,96 +29,89 @@ def is_iceberg_spark_catalog(spark: SparkSession, catalog: str) -> bool:
     return "org.apache.iceberg.spark.SparkCatalog" in impl and "SparkSessionCatalog" not in impl
 
 
-def list_catalogs(spark: SparkSession, default_catalog_name: str) -> list[str]:
-    catalogs: list[str] = []
-    with suppress(AnalysisException):
-        catalogs = [get_spark_row_value(row, "catalog") for row in spark.sql("SHOW CATALOGS").collect()]
-
-    catalogs = [catalog for catalog in catalogs if catalog]
-    return catalogs or [default_catalog_name]
+def is_spark_session_catalog(spark: SparkSession, catalog: str) -> bool:
+    impl = get_spark_catalog_config_value(spark, catalog, "") or ""
+    return "SparkSessionCatalog" in impl
 
 
-def collect_namespace_rows(spark: SparkSession, query: str) -> list[str]:
-    namespaces: set[str] = set()
-
-    with suppress(AnalysisException):
-        for row in spark.sql(query).collect():
-            namespace = namespace_to_str(
-                get_spark_row_value(row, "namespace", "namespace_name", "databaseName")
-            )
-            if namespace:
-                namespaces.add(namespace)
-
-    return list(namespaces)
+def should_include_catalog(spark: SparkSession, catalog: str) -> bool:
+    if table_list_include_session_catalog:
+        return True
+    return not is_spark_session_catalog(spark, catalog)
 
 
-def list_namespaces(spark: SparkSession, catalog: str, default_catalog_name: str) -> list[str]:
-    namespaces = collect_namespace_rows(spark, f"SHOW NAMESPACES IN {sql_ident(catalog)}")
-    if namespaces:
-        return namespaces
-
-    if catalog == default_catalog_name:
-        namespaces = collect_namespace_rows(spark, "SHOW NAMESPACES")
-        if namespaces:
-            return namespaces
-
-        namespaces = collect_namespace_rows(spark, "SHOW DATABASES")
-        if namespaces:
-            return namespaces
-
+def list_catalog_names(spark: SparkSession, default_catalog_name: str) -> list[str]:
     with suppress(Exception):
-        current_database = spark.catalog.currentDatabase()
-        if current_database:
-            return [current_database]
+        catalogs = [catalog.name for catalog in spark.catalog.listCatalogs()]
+        catalogs = [catalog for catalog in catalogs if catalog]
+        if catalogs:
+            return catalogs
+
+    return [default_catalog_name]
+
+
+def list_database_names(spark: SparkSession, catalog: str) -> list[str]:
+    with suppress(Exception):
+        databases = spark.catalog.listDatabases(catalog)
+        names = [database.name for database in databases if database.name]
+        if names:
+            return names
+
+    if catalog == default_catalog(spark):
+        with suppress(Exception):
+            databases = spark.catalog.listDatabases()
+            names = [database.name for database in databases if database.name]
+            if names:
+                return names
+
+        with suppress(Exception):
+            current_database = spark.catalog.currentDatabase()
+            if current_database:
+                return [current_database]
 
     return ["default"]
 
 
-def collect_table_names_from_query(
-    spark: SparkSession,
-    query: str,
-    catalog: str,
-    namespace: str,
-    default_catalog_name: str,
-) -> set[str]:
-    tables: set[str] = set()
+def list_tables(spark: SparkSession, catalog: str, database: str) -> list:
+    default_catalog_name = default_catalog(spark)
 
-    with suppress(AnalysisException):
-        df = spark.sql(query)
-        if "isTemporary" in df.columns:
-            df = df.filter(~F.col("isTemporary"))
+    with suppress(Exception):
+        if catalog == default_catalog_name:
+            return spark.catalog.listTables(database) or []
 
-        for row in df.collect():
-            table_name = get_spark_row_value(row, "tableName", "table")
-            if table_name:
-                tables.add(qualify_table_name(catalog, namespace, table_name, default_catalog_name))
+        tables = spark.catalog.listTables(database, catalog)
+        if tables:
+            return tables
 
-    return tables
+    with suppress(Exception):
+        return spark.catalog.listTables(database) or []
+
+    return []
 
 
-def collect_table_candidates_from_sql(
-    spark: SparkSession,
-    catalog: str,
-    namespace: str,
-    default_catalog_name: str,
-) -> set[str]:
-    tables = collect_table_names_from_query(
-        spark,
-        f"SHOW TABLES IN {sql_ident(catalog, namespace)}",
-        catalog,
-        namespace,
-        default_catalog_name,
-    )
-    if tables:
-        return tables
+def collect_table_candidates(spark: SparkSession) -> set[str]:
+    candidates: set[str] = set()
+    default_catalog_name = default_catalog(spark)
 
-    if catalog == default_catalog_name:
-        return collect_table_names_from_query(
-            spark,
-            f"SHOW TABLES IN {sql_ident(namespace)}",
-            catalog,
-            namespace,
-            default_catalog_name,
-        )
+    for catalog in list_catalog_names(spark, default_catalog_name):
+        if not should_include_catalog(spark, catalog):
+            continue
 
-    return tables
+        for database in list_database_names(spark, catalog):
+            for table in list_tables(spark, catalog, database):
+                if table.isTemporary:
+                    continue
+                candidates.add(
+                    qualify_table_name(catalog, database, table.name, default_catalog_name)
+                )
+
+    return candidates
+
+
+def catalogs_are_iceberg_only(spark: SparkSession, catalog_names: list[str]) -> bool:
+    included_catalogs = [
+        catalog for catalog in catalog_names if should_include_catalog(spark, catalog)
+    ]
+    if not included_catalogs:
+        return False
+    return all(is_iceberg_spark_catalog(spark, catalog) for catalog in included_catalogs)
