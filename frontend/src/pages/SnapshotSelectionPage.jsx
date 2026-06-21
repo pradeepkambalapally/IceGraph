@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { UI_BODY_MUTED_CLASS, UI_FORM_LABEL_MB_CLASS, UI_PAGE_TITLE_CLASS } from '../uiTypography'
 import { parseUtcDate, formatLocaleDateTime } from '../utils/dateUtils'
 
 function SnapshotItem({ ts, id, operation, selectedId, onClick }) {
@@ -129,9 +130,9 @@ export default function SnapshotSelectionPage() {
 
     if (loading) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+            <div className={`flex-1 flex flex-col items-center justify-center ${UI_BODY_MUTED_CLASS}`}>
                 <div className="w-10 h-10 border-4 border-slate-700 border-t-accent rounded-full animate-spin mb-4" />
-                <p className="text-sm">Loading snapshots for {tableName}…</p>
+                <p>Loading snapshots for {tableName}…</p>
             </div>
         )
     }
@@ -147,16 +148,16 @@ export default function SnapshotSelectionPage() {
     return (
         <div className="flex-1 flex items-center justify-center p-8">
             <div className="bg-surface rounded-2xl shadow-xl p-10 w-full max-w-4xl border border-edge">
-                <h2 className="text-xl font-bold text-ink mb-4">
+                <h2 className={`${UI_PAGE_TITLE_CLASS} mb-4`}>
                     Select Snapshots
                 </h2>
-                <p className="text-slate-400 text-sm mb-6">
+                <p className={`${UI_BODY_MUTED_CLASS} mb-6`}>
                     Choose a range of snapshots to view <strong>{tableName}</strong> (Inclusive)
                 </p>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                     <div className="flex gap-6">
                         <div className="flex-1">
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Start Snapshot</label>
+                            <label className={UI_FORM_LABEL_MB_CLASS}>Start Snapshot</label>
                             <div ref={startListRef} className="h-72 overflow-y-auto bg-edge rounded-xl p-2 space-y-2 scroll-py-4">
                                 {entries.map(([ts, id, operation]) => (
                                     <SnapshotItem
@@ -176,7 +177,7 @@ export default function SnapshotSelectionPage() {
                         </div>
 
                         <div className="flex-1">
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">End Snapshot</label>
+                            <label className={UI_FORM_LABEL_MB_CLASS}>End Snapshot</label>
                             <div ref={endListRef} className="h-72 overflow-y-auto bg-edge rounded-xl p-2 space-y-2 scroll-py-4">
                                 <div data-id="" onClick={() => setEndSnapshot('')}
                                     className={`p-3 rounded-lg cursor-pointer border ${endSnapshot === '' ? 'bg-accent border-accent' : 'bg-surface border-edge'}`}>

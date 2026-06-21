@@ -5,6 +5,14 @@ import CatalogTableList from './CatalogTableList'
 import { useTableSpecs } from '../context/TableSpecsContext'
 import { cacheData, clearCachedData } from '../utils/cacheUtils'
 import { BASE_PATH, IS_MOCK, MOCK_HOME, MOCK_HOME_ROUTE, MOCK_TABLE } from '../appConstants'
+import {
+  UI_ERROR_TEXT_SPACED_CLASS,
+  UI_FORM_LABEL_CLASS,
+  UI_LINK_BUTTON_CLASS,
+  UI_PRIMARY_BUTTON_SM_CLASS,
+  UI_TABLE_NAME_BUTTON_CLASS,
+  UI_TEXT_INPUT_CLASS,
+} from '../uiTypography'
 
 export default function NavBar() {
   const location = useLocation()
@@ -120,21 +128,20 @@ export default function NavBar() {
     changeTable(pickerTableName)
   }
 
-  const tableNameButtonClass =
-    'text-sm font-mono px-3 py-1 rounded-md border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400 hover:bg-surface-hover transition cursor-pointer'
+  const tableNameButtonClass = UI_TABLE_NAME_BUTTON_CLASS
 
   const tablePickerPanel = (
     <form onSubmit={handleTablePickerSubmit} className="flex flex-col gap-3">
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <label className={UI_FORM_LABEL_CLASS}>
             Change table
           </label>
           <button
             type="button"
             onClick={fetchCatalogTables}
             disabled={catalogLoading}
-            className="text-xs font-bold text-accent hover:text-accent-dark disabled:text-slate-500 disabled:cursor-not-allowed transition"
+            className={UI_LINK_BUTTON_CLASS}
           >
             {catalogLoading ? 'Loading…' : 'Browse catalog'}
           </button>
@@ -145,11 +152,11 @@ export default function NavBar() {
           value={pickerTableName}
           onChange={e => setPickerTableName(e.target.value)}
           placeholder="default.my_table"
-          className="w-full border border-edge bg-edge rounded-lg px-3 py-2 text-sm text-ink placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"
+          className={UI_TEXT_INPUT_CLASS}
           autoFocus
         />
         {catalogError && (
-          <p className="mt-2 text-xs text-rose-400">{catalogError}</p>
+          <p className={UI_ERROR_TEXT_SPACED_CLASS}>{catalogError}</p>
         )}
         <CatalogTableList
           tables={catalogTables}
@@ -162,7 +169,7 @@ export default function NavBar() {
       </div>
       <button
         type="submit"
-        className="bg-accent hover:bg-accent-dark text-white font-bold py-2 rounded-lg transition text-sm"
+        className={UI_PRIMARY_BUTTON_SM_CLASS}
       >
         Continue
       </button>

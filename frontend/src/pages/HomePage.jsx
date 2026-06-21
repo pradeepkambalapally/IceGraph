@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import logo from '../assets/icegraph.png'
 import CatalogTableList from '../components/CatalogTableList'
 import JSONbig from 'json-bigint'
+import {
+  UI_BODY_MUTED_CLASS,
+  UI_ERROR_TEXT_SPACED_CLASS,
+  UI_FOOTER_TEXT_CLASS,
+  UI_FORM_LABEL_CLASS,
+  UI_LINK_BUTTON_CLASS,
+  UI_PRIMARY_BUTTON_CLASS,
+  UI_TEXT_INPUT_LG_CLASS,
+} from '../uiTypography'
 
 export default function HomePage() {
   const [tableName, setTableName] = useState('')
@@ -63,21 +72,21 @@ export default function HomePage() {
           </div>
 
           <h2 className="text-xl font-bold text-ink mb-1">Visualize a Table</h2>
-          <p className="text-slate-400 text-sm mb-7">
+          <p className={`${UI_BODY_MUTED_CLASS} mb-7`}>
             Enter an Iceberg table name to explore its metadata graph.
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <label className={UI_FORM_LABEL_CLASS}>
                   Table Name
                 </label>
                 <button
                   type="button"
                   onClick={fetchCatalogTables}
                   disabled={catalogLoading}
-                  className="text-xs font-bold text-accent hover:text-accent-dark disabled:text-slate-500 disabled:cursor-not-allowed transition"
+                  className={UI_LINK_BUTTON_CLASS}
                 >
                   {catalogLoading ? 'Loading…' : 'Browse catalog'}
                 </button>
@@ -89,7 +98,7 @@ export default function HomePage() {
                 value={tableName}
                 onChange={e => setTableName(e.target.value)}
                 placeholder="default.my_table"
-                className="w-full border border-edge bg-edge rounded-lg px-4 py-2.5 text-sm text-ink placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"
+                className={UI_TEXT_INPUT_LG_CLASS}
               />
               <datalist id="table-history">
                 {history.map(item => (
@@ -98,7 +107,7 @@ export default function HomePage() {
               </datalist>
 
               {catalogError && (
-                <p className="mt-2 text-xs text-rose-400">{catalogError}</p>
+                <p className={UI_ERROR_TEXT_SPACED_CLASS}>{catalogError}</p>
               )}
 
               <CatalogTableList
@@ -112,7 +121,7 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="bg-accent hover:bg-accent-dark active:bg-accent-dark text-white font-bold py-2.5 rounded-lg transition text-sm tracking-wide mt-1"
+              className={`${UI_PRIMARY_BUTTON_CLASS} mt-1`}
             >
               Continue
             </button>
@@ -120,7 +129,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className="text-center text-xs text-slate-500 py-4">
+      <footer className={UI_FOOTER_TEXT_CLASS}>
         IceGraph — Apache Iceberg Metadata Visualizer
       </footer>
     </div>

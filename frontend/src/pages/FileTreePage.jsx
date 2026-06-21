@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { FileType } from '../graphConstants'
+import {
+  UI_BODY_MUTED_ITALIC_CLASS,
+  UI_FIELD_LABEL_MB_CLASS,
+  UI_FILE_COUNT_BADGE_CLASS,
+  UI_HELPER_TEXT_CLASS,
+  UI_MONO_MUTED_CLASS,
+  UI_MONO_MUTED_NOWRAP_CLASS,
+  UI_MONO_VALUE_CLASS,
+} from '../uiTypography'
 
 const FILE_TYPES = new Set([FileType.DATA, FileType.POSITION_DELETE, FileType.EQUALITY_DELETE])
 
@@ -112,7 +121,7 @@ function FileRow({ filePath, checkedFiles, toggleFile, navigate, tabSearch, time
         {'\u202A' + filePath + '\u202C'}
       </span>
       {timestamp && (
-        <span className="text-xs font-mono text-slate-400 shrink-0 whitespace-nowrap" title="First appearing snapshot timestamp">
+        <span className={`${UI_MONO_MUTED_NOWRAP_CLASS} shrink-0`} title="First appearing snapshot timestamp">
           {timestamp}
         </span>
       )}
@@ -175,15 +184,15 @@ function TreeNode({ label, node, path, checkedFiles, toggleFile, toggleBulk, nav
           <svg className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
             <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           </svg>
-          <span className="text-sm font-mono text-ink break-all">{label}</span>
+          <span className={UI_MONO_VALUE_CLASS}>{label}</span>
         </div>
         <div className="flex items-center gap-2 ml-4 shrink-0">
           {folderLastModified && (
-            <span className="text-xs font-mono text-slate-400 whitespace-nowrap" title="Last modified (earliest appearing snapshot)">
+            <span className={UI_MONO_MUTED_NOWRAP_CLASS} title="Last modified (earliest appearing snapshot)">
               {folderLastModified}
             </span>
           )}
-          <span className="text-caption font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full">
+          <span className={UI_FILE_COUNT_BADGE_CLASS}>
             {allFiles.length}
           </span>
           {hasChildFolders && (
@@ -458,7 +467,7 @@ export default function FileTreePage() {
   if (snapshots.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-canvas">
-        <p className="text-slate-500 text-sm italic">No snapshots available.</p>
+        <p className={UI_BODY_MUTED_ITALIC_CLASS}>No snapshots available.</p>
       </div>
     )
   }
@@ -514,7 +523,7 @@ export default function FileTreePage() {
                   )}
                 </span>
                 {currentSnapshot?.details.snapshot_id && (
-                  <span className="text-xs font-mono text-slate-400">
+                  <span className={UI_MONO_MUTED_CLASS}>
                     {currentSnapshot.details.snapshot_id}
                   </span>
                 )}
@@ -675,7 +684,7 @@ export default function FileTreePage() {
           </button>
 
           <div className="group relative pl-1">
-            <span className="text-xs text-slate-400 select-none whitespace-nowrap cursor-default">
+            <span className={`${UI_HELPER_TEXT_CLASS} select-none whitespace-nowrap cursor-default`}>
               {totalPartitions} / {totalFiles}
             </span>
             <div className="absolute top-full right-0 mt-2 hidden group-hover:flex flex-col gap-1 bg-surface border border-edge rounded-lg shadow-xl px-3 py-2 text-xs text-slate-300 whitespace-nowrap z-50">
@@ -695,7 +704,7 @@ export default function FileTreePage() {
 
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 flex flex-col gap-2">
         {totalPartitions === 0 && (
-          <p className="text-slate-500 text-sm italic mt-4">
+          <p className={`${UI_BODY_MUTED_ITALIC_CLASS} mt-4`}>
             {search ? 'No partitions match the search.' : 'No data files found for this snapshot.'}
           </p>
         )}
@@ -714,15 +723,15 @@ export default function FileTreePage() {
                   >
                     <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span className="text-sm font-mono text-ink break-all">{partition}</span>
+                  <span className={UI_MONO_VALUE_CLASS}>{partition}</span>
                 </div>
                 <div className="flex items-center gap-3 ml-4 shrink-0">
                   {flatFolderLastModified && (
-                    <span className="text-xs font-mono text-slate-400 whitespace-nowrap" title="Last modified (earliest appearing snapshot)">
+                    <span className={UI_MONO_MUTED_NOWRAP_CLASS} title="Last modified (earliest appearing snapshot)">
                       {flatFolderLastModified}
                     </span>
                   )}
-                  <span className="text-caption font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full">
+                  <span className={UI_FILE_COUNT_BADGE_CLASS}>
                     {files.length}
                   </span>
                   <input
@@ -759,7 +768,7 @@ export default function FileTreePage() {
           <>
             {treeData.files.length > 0 && (
               <div className="bg-surface rounded-lg border border-edge px-4 py-2 flex flex-col gap-1">
-                <span className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-1">(unpartitioned)</span>
+                <span className={UI_FIELD_LABEL_MB_CLASS}>(unpartitioned)</span>
                 {treeData.files.map(filePath => (
                   <FileRow
                     key={filePath}

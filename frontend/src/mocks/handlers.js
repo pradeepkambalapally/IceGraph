@@ -5,7 +5,7 @@ const mockResponse ={ "edges": [ { "from": "/warehouse/default/events/metadata/v
 export const handlers = [
   http.get('/api/v1/tables', () => {
     return HttpResponse.json({
-      tables: ['default.events', 'default.logging'],
+      tables: ['default.events'],
     })
   }),
 

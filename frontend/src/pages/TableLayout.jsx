@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 import { IS_MOCK, MOCK_HOME_ROUTE } from '../appConstants'
+import { UI_BODY_MUTED_CLASS, UI_DIALOG_TITLE_CLASS, UI_MONO_MUTED_CLASS } from '../uiTypography'
 
 import MetadataStructured from '../components/MetadataStructured'
 import { useTableSpecs } from '../context/TableSpecsContext'
@@ -253,7 +254,7 @@ export default function TableLayout() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-canvas">
         <div className="w-10 h-10 border-4 border-edge border-t-accent rounded-full animate-spin mb-4" />
-        <p className="text-slate-400 text-sm">
+        <p className={UI_BODY_MUTED_CLASS}>
           Loading data for <strong>{tableName}</strong>…
         </p>
       </div>
@@ -330,8 +331,8 @@ export default function TableLayout() {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-edge shrink-0">
               <div>
-                <div className="font-bold text-ink text-sm">Table Specification</div>
-                <div className="text-xs text-slate-400 font-mono mt-0.5">{metadata?.['table-name']}</div>
+                <div className={UI_DIALOG_TITLE_CLASS}>Table Specification</div>
+                <div className={`${UI_MONO_MUTED_CLASS} mt-0.5`}>{metadata?.['table-name']}</div>
               </div>
               <button
                 className="w-7 h-7 rounded-full bg-edge text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"

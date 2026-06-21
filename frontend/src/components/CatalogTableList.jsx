@@ -1,3 +1,5 @@
+import { UI_FILTER_INPUT_CLASS, UI_HELPER_TEXT_CLASS } from '../uiTypography'
+
 export default function CatalogTableList({
   tables,
   selectedName,
@@ -13,7 +15,7 @@ export default function CatalogTableList({
   if (!tables) return null
 
   if (tables.length === 0) {
-    return <p className="mt-2 text-xs text-slate-400">No tables found in the catalog.</p>
+    return <p className={`mt-2 ${UI_HELPER_TEXT_CLASS}`}>No tables found in the catalog.</p>
   }
 
   return (
@@ -24,11 +26,11 @@ export default function CatalogTableList({
           value={filter}
           onChange={e => onFilterChange(e.target.value)}
           placeholder="Filter tables…"
-          className="w-full border border-edge bg-edge rounded-md px-3 py-1.5 text-xs text-ink placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent transition"
+          className={UI_FILTER_INPUT_CLASS}
         />
       </div>
       {filteredTables.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-slate-400">No tables match your filter.</p>
+        <p className={`px-3 py-2 ${UI_HELPER_TEXT_CLASS}`}>No tables match your filter.</p>
       ) : (
         <ul className={`overflow-y-auto divide-y divide-edge ${listClassName}`}>
           {filteredTables.map(name => (

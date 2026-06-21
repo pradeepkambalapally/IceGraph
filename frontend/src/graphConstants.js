@@ -22,6 +22,21 @@ export const NODE_STYLE_MAP = {
 }
 export const UI_SECTION_NEWLINE = '\x00'
 export const UI_NEWLINE = '\n'
+
+const FILE_TYPE_LABELS = {
+  [FileType.MAIN_METADATA]: 'Main Metadata',
+  [FileType.METADATA]: 'Metadata',
+  [FileType.SNAPSHOT]: 'Snapshot',
+  [FileType.MANIFEST]: 'Manifest',
+  [FileType.DATA]: 'Data File',
+  [FileType.POSITION_DELETE]: 'Position Delete',
+  [FileType.EQUALITY_DELETE]: 'Equality Delete',
+}
+
+export function fileTypeLabel(type) {
+  if (!type) return 'Details'
+  return FILE_TYPE_LABELS[type] ?? String(type).replace(/_/g, ' ')
+}
 export const GRAPH_SETTINGS = {
   levelSeparation: 3000,
   nodeSpacing: 700,

@@ -7,6 +7,7 @@ import {
   pxToRem,
   remToPx,
 } from '../layoutConstants'
+import { PanelHeader } from './PanelContent'
 
 export { PANEL_WIDTH_RELAXED_REM as PANEL_WIDTH_RELAXED } from '../layoutConstants'
 
@@ -114,9 +115,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
       )}
       <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
         <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
-          {header ?? (
-            <div className="font-bold text-xs text-ink pr-6 leading-snug min-w-0">{title}</div>
-          )}
+          {header ?? (title ? <PanelHeader title={title} /> : null)}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"

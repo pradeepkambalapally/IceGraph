@@ -1,9 +1,11 @@
+import { UI_STRUCTURED_SECTION_TITLE_CLASS } from '../uiTypography'
+
 export default function MetadataStructured({ metadata, onSelect, selectedId }) {
   const renderBoxes = (items, idKey, labelPrefix, activeId, type) => {
     if (!items || !Array.isArray(items)) return null
     return (
       <div className="mb-6">
-        <div className="text-caption font-black text-slate-400 uppercase tracking-[0.1em] mb-3 border-b border-edge pb-1.5 flex justify-between items-center">
+        <div className={UI_STRUCTURED_SECTION_TITLE_CLASS}>
           <span>{labelPrefix} History</span>
           <span className="text-micro font-medium normal-case bg-edge px-2 py-0.5 rounded-full text-slate-400">
             {items.length} {items.length === 1 ? 'item' : 'items'}

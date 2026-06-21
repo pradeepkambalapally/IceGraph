@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import CopyIconButton from '../components/CopyIconButton'
-import CopyableValue from '../components/CopyableValue'
+import {
+  PanelDetailRow,
+  PanelHeader,
+  PanelSectionTitle,
+  PANEL_DIFF_AFTER_LABEL_CLASS,
+  PANEL_DIFF_AFTER_VALUE_CLASS,
+  PANEL_DIFF_BEFORE_LABEL_CLASS,
+  PANEL_DIFF_BEFORE_VALUE_CLASS,
+  PANEL_FIELD_LABEL_CLASS,
+  PANEL_FIELD_LABEL_WIDE_CLASS,
+} from '../components/PanelContent'
+import {
+  UI_BODY_MUTED_ITALIC_CLASS,
+  UI_HELPER_TEXT_CLASS,
+  UI_TOOLBAR_BUTTON_DEFAULT,
+  UI_ZOOM_INDICATOR_CLASS,
+} from '../uiTypography'
 import ResizableSidePanel from '../components/ResizableSidePanel'
 import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
@@ -121,7 +137,7 @@ function DiffRow({ label, before, after }) {
     const allKeys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])).sort()
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-caption font-bold text-slate-500 uppercase tracking-widest">
+        <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
           {label.replace(/_/g, ' ')}
         </span>
         <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-detail overflow-x-auto shadow-2xl flex flex-col">
@@ -190,24 +206,24 @@ function DiffRow({ label, before, after }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-caption font-bold text-slate-500 uppercase tracking-wider">
+      <span className={`block ${PANEL_FIELD_LABEL_CLASS}`}>
         {label.replace(/_/g, ' ')}
       </span>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="text-tiny text-red-400 font-bold uppercase mb-0.5">Before</div>
+          <div className={PANEL_DIFF_BEFORE_LABEL_CLASS}>Before</div>
           <div className="relative">
             {before && <CopyIconButton text={tryFormat(before)} className="absolute top-1.5 right-1.5 z-10" />}
-            <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-8">
+            <pre className={PANEL_DIFF_BEFORE_VALUE_CLASS}>
               {tryFormat(before) ?? '—'}
             </pre>
           </div>
         </div>
         <div>
-          <div className="text-tiny text-green-400 font-bold uppercase mb-0.5">After</div>
+          <div className={PANEL_DIFF_AFTER_LABEL_CLASS}>After</div>
           <div className="relative">
             {after && <CopyIconButton text={tryFormat(after)} className="absolute top-1.5 right-1.5 z-10" />}
-            <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 pr-9 overflow-x-auto whitespace-pre-wrap break-all min-h-8">
+            <pre className={PANEL_DIFF_AFTER_VALUE_CLASS}>
               {tryFormat(after) ?? '—'}
             </pre>
           </div>
@@ -217,24 +233,16 @@ function DiffRow({ label, before, after }) {
   )
 }
 
-function PanelCopyRow({ label, value, valueClassName = '' }) {
-  return (
-    <div className="flex flex-col gap-1 py-1.5 border-b border-edge last:border-0">
-      <span className="text-xs text-slate-400">{label}</span>
-      <CopyableValue value={value} mono className={valueClassName} />
-    </div>
-  )
-}
 
 function SnapSummary({ summary }) {
   const rows = parseSummary(summary)
   if (rows.length === 0) return null
   return (
     <div>
-      <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-      <div className="flex flex-col gap-2">
+      <PanelSectionTitle>Summary</PanelSectionTitle>
+      <div className="flex flex-col gap-3">
         {rows.map(({ key, value }) => (
-          <PanelCopyRow key={key} label={key} value={value} />
+          <PanelDetailRow key={key} label={key} value={value} />
         ))}
       </div>
     </div>
@@ -245,7 +253,7 @@ function DiffList({ diff }) {
   const rows = diff.filter(({ key }) => key !== 'type')
   return rows.length > 0
     ? rows.map(({ key, before, after }) => <DiffRow key={key} label={key} before={before} after={after} />)
-    : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
+    : <p className={UI_BODY_MUTED_ITALIC_CLASS}>No tracked field changes detected.</p>
 }
 
 export default function TimelinePage() {
@@ -493,7 +501,7 @@ export default function TimelinePage() {
   if (events.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-canvas">
-        <p className="text-slate-500 text-sm italic">No metadata history available.</p>
+        <p className={UI_BODY_MUTED_ITALIC_CLASS}>No metadata history available.</p>
       </div>
     )
   }
@@ -509,7 +517,7 @@ export default function TimelinePage() {
         {[['A', 'Write'], ['C', 'Branch Write'], ['B', 'Metadata Op'], ['init', 'Initial State']].map(([type, lbl]) => (
           <div key={type} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorFor(type) }} />
-            <span className="text-xs text-slate-400">{lbl}</span>
+            <span className={UI_HELPER_TEXT_CLASS}>{lbl}</span>
           </div>
         ))}
       </div>
@@ -597,13 +605,13 @@ export default function TimelinePage() {
       <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10 font-sans w-52">
         <button
           type="button"
-          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-surface text-accent border border-accent hover:bg-edge"
+          className={UI_TOOLBAR_BUTTON_DEFAULT}
           onClick={fitTimeline}
           onMouseDown={e => e.preventDefault()}
         >
           Fit Timeline
         </button>
-        <div className="text-center text-tiny text-slate-500 tabular-nums">
+        <div className={UI_ZOOM_INDICATOR_CLASS}>
           {Math.round(view.zoom * 100)}%
         </div>
       </div>
@@ -614,27 +622,20 @@ export default function TimelinePage() {
           accentColor={colorFor(selected.type)}
           onClose={closePanel}
           header={(
-            <div className="min-w-0 pr-4">
-              <div className="font-semibold text-xs" style={{ color: colorFor(selected.type) }}>
-                {labelFor(selected.type)}
-              </div>
-              <div className="text-xs font-mono text-ink mt-0.5 break-all">
-                {selected.details.file_path}
-              </div>
-              {formatTs(selected.details.timestamp) && (
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {formatTs(selected.details.timestamp).full}
-                </div>
-              )}
-            </div>
+            <PanelHeader
+              title={labelFor(selected.type)}
+              titleColor={colorFor(selected.type)}
+              subtitle={selected.details.file_path}
+              meta={formatTs(selected.details.timestamp)?.full}
+            />
           )}
         >
           {selected.type === 'A' && (
             <>
-              <PanelCopyRow label="Snapshot ID" value={selected.snapshotId} />
+              <PanelDetailRow label="Snapshot ID" value={selected.snapshotId} />
               {selectedSnap && (
                 <>
-                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
                   <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
@@ -643,16 +644,16 @@ export default function TimelinePage() {
 
           {selected.type === 'C' && (
             <>
-              <PanelCopyRow label="Branch Name" value={selected.branchName} />
-              <PanelCopyRow label="Snapshot ID" value={selected.snapshotId} />
+              <PanelDetailRow label="Branch Name" value={selected.branchName} />
+              <PanelDetailRow label="Snapshot ID" value={selected.snapshotId} />
               {selectedSnap && (
                 <>
-                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
                   <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
               <div className="mt-2 border-t border-edge pt-4">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
+                <PanelSectionTitle className="mb-3">Metadata Changes</PanelSectionTitle>
                 <DiffList diff={selected.diff} />
               </div>
             </>
@@ -662,22 +663,22 @@ export default function TimelinePage() {
 
           {selected.type === 'init' && (
             <>
-              <PanelCopyRow label="Snapshot ID" value={selected.details.snapshot_id} />
-              <PanelCopyRow label="Schema ID" value={selected.details.current_schema_id} />
-              <PanelCopyRow label="Spec ID" value={selected.details.partition_spec_id} />
-              <PanelCopyRow label="Sort Order ID" value={selected.details.sort_order_id} />
+              <PanelDetailRow label="Snapshot ID" value={selected.details.snapshot_id} />
+              <PanelDetailRow label="Schema ID" value={selected.details.current_schema_id} />
+              <PanelDetailRow label="Spec ID" value={selected.details.partition_spec_id} />
+              <PanelDetailRow label="Sort Order ID" value={selected.details.sort_order_id} />
               {selectedSnap && (
                 <>
-                  <PanelCopyRow label="Operation" value={selectedSnap.operation} />
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
                   <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
               {parseProperties(selected.details.properties).length > 0 && (
                 <div>
-                  <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
-                  <div className="flex flex-col gap-2">
+                  <PanelSectionTitle>Properties</PanelSectionTitle>
+                  <div className="flex flex-col gap-3">
                     {parseProperties(selected.details.properties).map(({ key, value }) => (
-                      <PanelCopyRow key={key} label={key} value={value} />
+                      <PanelDetailRow key={key} label={key} value={value} />
                     ))}
                   </div>
                 </div>

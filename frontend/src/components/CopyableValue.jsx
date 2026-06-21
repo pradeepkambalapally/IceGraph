@@ -1,4 +1,5 @@
 import CopyIconButton from './CopyIconButton'
+import { UI_COPYABLE_VALUE_CLASS, UI_EMPTY_PLACEHOLDER_CLASS } from '../uiTypography'
 
 export default function CopyableValue({
   value,
@@ -15,9 +16,9 @@ export default function CopyableValue({
         <CopyIconButton text={textToCopy} className="absolute top-1.5 right-1.5 z-10" />
       )}
       <span
-        className={`block text-sm text-ink break-all pl-3 pr-9 py-2 ${boxClassName} ${mono ? 'font-mono' : ''}`}
+        className={`${UI_COPYABLE_VALUE_CLASS} ${boxClassName} ${mono ? 'font-mono' : ''}`}
       >
-        {hasValue ? value : <span className="text-slate-600 italic">—</span>}
+        {hasValue ? value : <span className={UI_EMPTY_PLACEHOLDER_CLASS}>—</span>}
       </span>
     </div>
   )

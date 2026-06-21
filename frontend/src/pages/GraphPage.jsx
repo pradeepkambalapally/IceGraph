@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
-import CopyIconButton from '../components/CopyIconButton'
+import { PanelDetailRow, PanelHeader, PANEL_STATUS_BADGE_CLASS } from '../components/PanelContent'
+import {
+  UI_DIALOG_SECTION_TITLE_CLASS,
+  UI_POPUP_HINT_CLASS,
+  UI_TOOLBAR_BUTTON_LAYOUT,
+  toolbarButtonClass,
+} from '../uiTypography'
 import ResizableSidePanel from '../components/ResizableSidePanel'
 import {
   GRAPH_SETTINGS,
   DELETED_DATA_FILE_CONNECTION_COLOR,
   FileType,
+  fileTypeLabel,
 } from '../graphConstants'
 import {
   getNavHeightPx,
@@ -18,13 +25,12 @@ import {
   PANEL_WIDTH_RELAXED_REM,
   remToPx,
 } from '../layoutConstants'
-import JSONbig from 'json-bigint'
+import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 
 const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
 
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
-const STICKY_SECTION_LINE_COUNT_COLLAPSE = 15
 
 function getGraphNodeMetrics() {
   return {
@@ -64,54 +70,6 @@ function getLineage(nodeId, links) {
   traverse(String(nodeId), 'from')
 
   return relatedNodes
-}
-
-function DetailRow({ r, relaxedCollapse = false }) {
-  const tryParseJson = (str) => {
-    try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
-  }
-
-  let displayValue = r.value
-  const parsed = tryParseJson(r.value)
-  if (parsed !== undefined && typeof parsed === 'object' && parsed !== null) {
-    displayValue = JSON.stringify(parsed, null, 2)
-  }
-
-  const textToCopy = String(displayValue ?? '')
-  const lineCount = textToCopy.split('\n').length
-  const isCollapsible = lineCount > STICKY_SECTION_LINE_COUNT_COLLAPSE
-  const [isCollapsed, setIsCollapsed] = useState(true)
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1 gap-2">
-        <span className="block font-bold text-slate-500 text-caption uppercase tracking-wider">
-          {r.label}
-        </span>
-        {isCollapsible && (
-          <button
-            onClick={() => setIsCollapsed(p => !p)}
-            className="text-micro font-bold uppercase tracking-wide text-accent hover:text-white transition shrink-0"
-          >
-            {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
-          </button>
-        )}
-      </div>
-      <div className="relative">
-        <CopyIconButton text={textToCopy} className="absolute top-2 right-2 z-10" />
-        <span
-          className="block font-mono bg-canvas text-slate-200 pl-3 pr-9 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
-          style={isCollapsible && isCollapsed ? {
-            maxHeight: relaxedCollapse ? '22lh' : '10lh',
-            overflow: 'hidden',
-            maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-          } : {}}
-        >
-          {textToCopy}
-        </span>
-      </div>
-    </div>
-  )
 }
 
 export default function GraphPage() {
@@ -575,11 +533,15 @@ export default function GraphPage() {
   }, [])
 
   const sticky = stickyNode ? {
-    title: stickyNode.details.type, rows: Object.entries(stickyNode.details).map(([label, value]) => ({
+    rows: Object.entries(stickyNode.details).map(([label, value]) => ({
       label,
-      value
-    }))
+      value,
+    })),
   } : null
+
+  const stickyTimestamp = stickyNode?.details?.timestamp
+    ? formatLocaleDateTime(parseUtcDate(stickyNode.details.timestamp))
+    : null
 
   return (
     <div className="relative w-full overflow-hidden h-graph bg-graph-grid">
@@ -616,11 +578,7 @@ export default function GraphPage() {
 
       <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-52">
         <button
-          className={`w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
-            ${isFullView
-              ? 'bg-accent text-white hover:bg-accent-dark'
-              : 'bg-surface text-accent border border-accent hover:bg-edge'
-            }`}
+          className={toolbarButtonClass(isFullView)}
           onClick={() => !isFullView && resetView()}
           onMouseDown={e => e.preventDefault()}
         >
@@ -628,11 +586,11 @@ export default function GraphPage() {
         </button>
 
         <button
-          className={`w-full flex overflow-hidden rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
-            ${isInspectMode
+          className={`${UI_TOOLBAR_BUTTON_LAYOUT} flex overflow-hidden ${
+            isInspectMode
               ? 'bg-accent text-white border border-accent hover:bg-accent-dark'
               : 'bg-surface text-accent border border-accent hover:bg-edge'
-            }`}
+          }`}
           onClick={() => setIsInspectMode(p => !p)}
           onMouseDown={e => e.preventDefault()}
         >
@@ -645,7 +603,7 @@ export default function GraphPage() {
         </button>
 
         <button
-          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-surface text-accent border border-accent hover:bg-edge"
+          className={toolbarButtonClass(false)}
           onClick={() => resetZoom()}
           onMouseDown={e => e.preventDefault()}
         >
@@ -656,7 +614,7 @@ export default function GraphPage() {
       {movementPopup && (
         <div className="absolute inset-0 flex items-center justify-center z-[1100] pointer-events-none">
           <div className="bg-surface/57 backdrop-blur-md border border-edge rounded-xl shadow-2xl p-4 pointer-events-auto w-[70dvw] max-w-4xl font-sans">
-            <div className="text-caption font-bold text-slate-500 uppercase tracking-wider mb-3">
+            <div className={UI_DIALOG_SECTION_TITLE_CLASS}>
               {movementPopup.direction === 'in' ? 'Navigate to parent' : 'Navigate to child'}
             </div>
             <div ref={popupListRef} className="flex flex-col max-h-[60dvh] overflow-y-auto">
@@ -683,7 +641,7 @@ export default function GraphPage() {
                 {movementPopup.input || <span className="text-slate-600">type combo…</span>}
               </div>
             )}
-            <div className="text-xs text-slate-400 mt-2">Type combo to select · Esc to cancel</div>
+            <div className={UI_POPUP_HINT_CLASS}>Type combo to select · Esc to cancel</div>
           </div>
         </div>
       )}
@@ -692,20 +650,28 @@ export default function GraphPage() {
         <ResizableSidePanel
           ref={stickyPanelRef}
           accentColor={stickyNode.color}
-          title={sticky.title}
+          header={(
+            <PanelHeader
+              title={fileTypeLabel(stickyNode.details.type)}
+              titleColor={stickyNode.color}
+              subtitle={stickyNode.details.file_path}
+              meta={stickyTimestamp || undefined}
+            />
+          )}
           onClose={closeStickyPanel}
           onLayoutChange={setPanelLayout}
           maxContainerWidth={dimensions.width - remToPx(PANEL_GUTTER_REM)}
         >
           {isInspectMode && (
-            <span className="inline-flex items-center gap-1.5 bg-accent/10 text-accent px-2.5 py-1 rounded-md text-caption font-bold uppercase tracking-wide w-fit">
+            <span className={PANEL_STATUS_BADGE_CLASS}>
               🔒 Locked View
             </span>
           )}
           {sticky.rows.filter((r) => r.value !== '').map((r, i) => (
-            <DetailRow
+            <PanelDetailRow
               key={i}
-              r={r}
+              label={r.label}
+              value={r.value}
               relaxedCollapse={panelLayout.isFullscreen || panelLayout.panelWidthRem >= PANEL_WIDTH_RELAXED_REM}
             />
           ))}

@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import CopyableValue from '../components/CopyableValue'
 import { FileType } from '../graphConstants'
+import {
+  UI_BODY_MUTED_CLASS,
+  UI_BODY_MUTED_ITALIC_CLASS,
+  UI_FIELD_LABEL_CLASS,
+  UI_METADATA_SECTION_TITLE_CLASS,
+  UI_MONO_MUTED_CLASS,
+} from '../uiTypography'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 import { parseSummary } from '../utils/snapshotUtils'
 
@@ -9,7 +16,7 @@ function Section({ title, children }) {
   return (
     <div className="bg-surface rounded-xl border border-edge shadow-sm overflow-hidden">
       <div className="px-5 py-3 border-b border-edge bg-surface-deep">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</h2>
+        <h2 className={UI_METADATA_SECTION_TITLE_CLASS}>{title}</h2>
       </div>
       <div className="px-5 py-4">{children}</div>
     </div>
@@ -19,7 +26,7 @@ function Section({ title, children }) {
 function KV({ label, value, mono = false }) {
   return (
     <div className="flex flex-col gap-0.5 py-2 border-b border-edge last:border-0 [&:nth-last-child(2)]:border-0">
-      <span className="text-caption font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+      <span className={UI_FIELD_LABEL_CLASS}>{label}</span>
       <CopyableValue value={value} mono={mono} />
     </div>
   )
@@ -209,7 +216,7 @@ export default function MetadataPage() {
           </div>
           {mainMetadataPath && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-edge">
-              <span className="text-caption font-bold text-slate-500 uppercase tracking-wider shrink-0">Path</span>
+              <span className={`${UI_FIELD_LABEL_CLASS} shrink-0`}>Path</span>
               <span className="text-xs font-mono text-slate-300 break-all">{mainMetadataPath}</span>
             </div>
           )}
@@ -253,7 +260,7 @@ export default function MetadataPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 italic">Unpartitioned.</p>
+              <p className={UI_BODY_MUTED_ITALIC_CLASS}>Unpartitioned.</p>
             )}
           </Section>
         )}
@@ -271,12 +278,12 @@ export default function MetadataPage() {
                   <div key={i} className="grid grid-cols-[1fr_120px_120px] py-2 border-b border-edge last:border-0 items-center">
                     <span className="text-sm font-mono text-accent">{typeof f.transform === 'object' ? JSON.stringify(f.transform) : f.transform}</span>
                     <span className="text-sm text-ink">{f.direction}</span>
-                    <span className="text-sm text-slate-400">{f['null-order']}</span>
+                    <span className={UI_BODY_MUTED_CLASS}>{f['null-order']}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 italic">Unsorted.</p>
+              <p className={UI_BODY_MUTED_ITALIC_CLASS}>Unsorted.</p>
             )}
           </Section>
         )}
@@ -288,7 +295,7 @@ export default function MetadataPage() {
                 <div key={name} className="flex items-center gap-3 py-2 border-b border-edge last:border-0">
                   <span className="text-sm font-semibold text-ink min-w-25">{name}</span>
                   <span className="text-micro font-bold uppercase px-2 py-0.5 rounded bg-edge text-slate-400">{ref.type}</span>
-                  <span className="text-xs font-mono text-slate-400 ml-auto">{ref['snapshot-id']}</span>
+                  <span className={`${UI_MONO_MUTED_CLASS} ml-auto`}>{ref['snapshot-id']}</span>
                 </div>
               ))}
             </div>
@@ -301,7 +308,7 @@ export default function MetadataPage() {
               {properties.map(([k, v]) => (
                 <div key={k} className="flex items-start gap-4 py-2 border-b border-edge last:border-0">
                   <span className="text-sm font-mono text-accent min-w-45 shrink-0">{k}</span>
-                  <span className="text-sm text-slate-400 break-all">{String(v)}</span>
+                  <span className={`${UI_BODY_MUTED_CLASS} break-all`}>{String(v)}</span>
                 </div>
               ))}
             </div>
@@ -320,7 +327,7 @@ export default function MetadataPage() {
                 {currentSchema.fields.map(f => <FieldRow key={f['field-id'] ?? f.name} field={f} />)}
               </div>
             ) : (
-              <p className="text-sm text-slate-400 italic">No fields defined.</p>
+              <p className={UI_BODY_MUTED_ITALIC_CLASS}>No fields defined.</p>
             )}
           </Section>
         )}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { UI_DOCS_BODY_CLASS, UI_DOCS_NAV_TITLE_CLASS } from '../uiTypography'
 
 function Key({ k }) {
   return (
@@ -37,11 +38,6 @@ const SECTIONS = [
         </p>
         <p>
           Everything is <strong className="text-white">read-only</strong>.
-        </p>
-        <p>
-          While viewing a table, click the table name in the navbar to change tables. Enter a new
-          table or use <strong className="text-white">Browse catalog</strong>, then click Continue.
-          IceGraph opens the new table in a separate browser tab so your current graph stays loaded.
         </p>
         <div className="border-t border-edge pt-4 flex flex-col gap-2 text-xs">
           <div className="flex items-center justify-between text-slate-400">
@@ -86,6 +82,14 @@ const SECTIONS = [
             Large ranges with many data files may take a moment.
           </p>
         </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Switching tables</h3>
+          <p>
+            While viewing a table, click the table name in the navbar to change tables. Enter a new
+            table or use <strong className="text-white">Browse catalog</strong>, then click Continue.
+            IceGraph opens the new table in a separate browser tab so your current graph stays loaded.
+          </p>
+        </div>
       </div>
     ),
   },
@@ -117,8 +121,8 @@ const SECTIONS = [
         <div className="space-y-2">
           <h3 className="text-white font-semibold">Details panel</h3>
           <p>
-            The panel on the right lists every metadata field for the selected node. Use it to read file paths,
-            snapshot IDs, partition values, and other properties without leaving the graph.
+            The panel on the right lists every metadata field for the selected node. The header shows the
+            file type, path, and timestamp; fields below use the same layout as Timeline and other views.
           </p>
           <ul className="list-disc list-inside space-y-1">
             <li><strong className="text-white">Resize</strong> — drag the grip handle on the left edge of the panel to widen it. Wider panels give text fields more room and show more lines before you need to expand a field.</li>
@@ -372,7 +376,7 @@ export default function DocsPage() {
     <div className="flex flex-1 overflow-hidden">
       <aside className="w-52 shrink-0 bg-[#151b26] border-r border-edge overflow-y-auto hidden sm:block">
         <div className="px-4 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Documentation</p>
+          <p className={UI_DOCS_NAV_TITLE_CLASS}>Documentation</p>
           <nav className="flex flex-col gap-0.5">
             {SECTIONS.map(s => (
               <button
@@ -405,7 +409,7 @@ export default function DocsPage() {
 
         <div className="max-w-3xl mx-auto px-6 py-8">
           <h1 className="text-2xl font-bold text-white mb-6">{activeSection.title}</h1>
-          <div className="text-slate-300 text-sm leading-relaxed">
+          <div className={UI_DOCS_BODY_CLASS}>
             {activeSection.body}
           </div>
         </div>
