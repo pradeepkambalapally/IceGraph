@@ -140,7 +140,7 @@ function DiffRow({ label, before, after }) {
         <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
           {label.replace(/_/g, ' ')}
         </span>
-        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-detail overflow-x-auto shadow-2xl flex flex-col">
+        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-xs overflow-x-auto shadow-2xl flex flex-col">
           <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
           <div className="flex flex-col">
             {allKeys.map(key => {
@@ -468,14 +468,15 @@ export default function TimelinePage() {
 
   useEffect(() => {
     const onMouseMove = (e) => {
-      if (!dragRef.current) return
-      const dx = e.clientX - dragRef.current.x
-      const dy = e.clientY - dragRef.current.y
+      const drag = dragRef.current
+      if (!drag) return
+      const dx = e.clientX - drag.x
+      const dy = e.clientY - drag.y
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPanRef.current = true
       setView(v => ({
         ...v,
-        panX: dragRef.current.panX + dx,
-        panY: dragRef.current.panY + dy,
+        panX: drag.panX + dx,
+        panY: drag.panY + dy,
       }))
     }
     const onMouseUp = () => { dragRef.current = null; setIsDragging(false) }
@@ -536,68 +537,68 @@ export default function TimelinePage() {
             className="flex items-start min-w-max"
             style={{ padding: `${tl.padY}px ${tl.padX}px` }}
           >
-          {events.map((event, i) => {
-            const ts = formatTs(event.details.timestamp)
-            const fileName = shortFileName(event.details.file_path)
-            return (
-              <div key={i} className="flex items-center">
-                {i > 0 && (
-                  <div className="flex flex-col items-center shrink-0">
-                    <div
-                      className="text-slate-500"
-                      style={{ fontSize: tl.fontMicro, marginBottom: tl.durMb }}
-                    >
-                      {formatDuration(events[i - 1].details.timestamp, events[i].details.timestamp)}
+            {events.map((event, i) => {
+              const ts = formatTs(event.details.timestamp)
+              const fileName = shortFileName(event.details.file_path)
+              return (
+                <div key={i} className="flex items-center">
+                  {i > 0 && (
+                    <div className="flex flex-col items-center shrink-0">
+                      <div
+                        className="text-slate-500"
+                        style={{ fontSize: tl.fontMicro, marginBottom: tl.durMb }}
+                      >
+                        {formatDuration(events[i - 1].details.timestamp, events[i].details.timestamp)}
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-px bg-edge" style={{ width: tl.connector }} />
+                        <div style={{
+                          width: 0, height: 0,
+                          borderTop: `${tl.arrowTop}px solid transparent`,
+                          borderBottom: `${tl.arrowBottom}px solid transparent`,
+                          borderLeft: `${tl.arrowLeft}px solid #2d3748`,
+                        }} />
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <div className="h-px bg-edge" style={{ width: tl.connector }} />
-                      <div style={{
-                        width: 0, height: 0,
-                        borderTop: `${tl.arrowTop}px solid transparent`,
-                        borderBottom: `${tl.arrowBottom}px solid transparent`,
-                        borderLeft: `${tl.arrowLeft}px solid #2d3748`,
-                      }} />
-                    </div>
-                  </div>
-                )}
-                <div
-                  className="flex flex-col items-center cursor-pointer select-none"
-                  style={{ gap: tl.gap }}
-                  onClick={() => selectEvent(event)}
-                >
-                  <div className="text-center" style={{ maxWidth: tl.textMax }}>
-                    <div
-                      className="font-mono font-bold leading-tight break-all"
-                      style={{ fontSize: tl.fontXs, color: colorFor(event.type) }}
-                      title={event.details.file_path ?? ''}
-                    >
-                      {fileName}
-                    </div>
-                  </div>
+                  )}
                   <div
-                    className="rounded-full shadow-lg shrink-0 transition-[outline]"
-                    style={{
-                      width: tl.node,
-                      height: tl.node,
-                      borderWidth: tl.nodeBorder,
-                      borderStyle: 'solid',
-                      backgroundColor: colorFor(event.type),
-                      borderColor: colorFor(event.type),
-                      ...(selected === event ? { outline: `${tl.outline}px solid white`, outlineOffset: tl.outlineOffset } : {}),
-                    }}
-                  />
-                  <div className="text-center" style={{ maxWidth: tl.textMax }}>
-                    {ts && (
-                      <>
-                        <div className="text-slate-500 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.date}</div>
-                        <div className="text-slate-600 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.time}</div>
-                      </>
-                    )}
+                    className="flex flex-col items-center cursor-pointer select-none"
+                    style={{ gap: tl.gap }}
+                    onClick={() => selectEvent(event)}
+                  >
+                    <div className="text-center" style={{ maxWidth: tl.textMax }}>
+                      <div
+                        className="font-mono font-bold leading-tight break-all"
+                        style={{ fontSize: tl.fontXs, color: colorFor(event.type) }}
+                        title={event.details.file_path ?? ''}
+                      >
+                        {fileName}
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-full shadow-lg shrink-0 transition-[outline]"
+                      style={{
+                        width: tl.node,
+                        height: tl.node,
+                        borderWidth: tl.nodeBorder,
+                        borderStyle: 'solid',
+                        backgroundColor: colorFor(event.type),
+                        borderColor: colorFor(event.type),
+                        ...(selected === event ? { outline: `${tl.outline}px solid white`, outlineOffset: tl.outlineOffset } : {}),
+                      }}
+                    />
+                    <div className="text-center" style={{ maxWidth: tl.textMax }}>
+                      {ts && (
+                        <>
+                          <div className="text-slate-500 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.date}</div>
+                          <div className="text-slate-600 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.time}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
           </div>
         </div>
       </div>

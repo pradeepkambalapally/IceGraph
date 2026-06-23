@@ -28,10 +28,7 @@ class TableListCollector:
     @timed
     def collect(self) -> list[str]:
         now = time.time()
-        if (
-            TableListCollector._cache
-            and now - TableListCollector._cache[0] < table_list_cache_ttl_seconds
-        ):
+        if TableListCollector._cache and now - TableListCollector._cache[0] < table_list_cache_ttl_seconds:
             return TableListCollector._cache[1]
 
         candidates, iceberg_only = self._collect_candidates()
@@ -62,9 +59,7 @@ class TableListCollector:
         max_workers = min(len(candidates), 8)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(self._table_is_iceberg, table): table for table in candidates
-            }
+            futures = {executor.submit(self._table_is_iceberg, table): table for table in candidates}
             for future in as_completed(futures):
                 table = futures[future]
                 if future.result():

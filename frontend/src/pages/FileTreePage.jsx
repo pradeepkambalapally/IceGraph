@@ -48,7 +48,7 @@ function DropdownItem({ label, badge, active, onClick }) {
         }`}
     >
       <span>{label}</span>
-      {badge && <span className="text-micro font-bold uppercase tracking-wider text-accent ml-3">{badge}</span>}
+      {badge && <span className="text-xs font-bold uppercase tracking-wider text-accent ml-3">{badge}</span>}
     </button>
   )
 }
@@ -516,10 +516,10 @@ export default function FileTreePage() {
             onToggle={() => setSnapshotDropdownOpen(p => !p)}
             triggerLabel={
               <span className="flex flex-col items-start leading-none gap-1">
-                <span className="flex items-center gap-1.5 text-caption text-slate-400">
+                <span className="flex items-center gap-1.5 text-base text-slate-400">
                   Snapshot {effectiveIdx + 1}
                   {effectiveIdx === displayedSnapshots.length - 1 && (
-                    <span className="text-micro font-bold uppercase tracking-wider text-accent">latest</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">latest</span>
                   )}
                 </span>
                 {currentSnapshot?.details.snapshot_id && (

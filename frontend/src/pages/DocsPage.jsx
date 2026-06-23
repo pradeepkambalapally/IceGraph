@@ -314,6 +314,7 @@ const SECTIONS = [
           <ShortcutRow keys={['l', '→']} desc="Navigate to the selected node's child(ren)" />
           <ShortcutRow keys={['j', '↓']} desc="Scroll the node details panel down (when open)" />
           <ShortcutRow keys={['k', '↑']} desc="Scroll the node details panel up (when open)" />
+          <ShortcutRow keys={['f']} desc="Toggle fullscreen for the details panel (when open)" />
           <ShortcutRow keys={['Esc']} desc="Close the node details panel" />
         </div>
 
@@ -325,13 +326,12 @@ const SECTIONS = [
 
         <div className="space-y-1">
           <h3 className="text-white font-semibold mb-2">Timeline View</h3>
-          <ShortcutRow keys={['Scroll']} desc="Zoom in / out on the timeline" />
-          <ShortcutRow keys={['Drag']} desc="Pan the timeline" />
           <ShortcutRow keys={['Shift', 'Scroll']} desc="Pan the timeline horizontally" />
           <ShortcutRow keys={['h', '←']} desc="Select the previous snapshot — if none is selected, jumps to the first (oldest)" />
           <ShortcutRow keys={['l', '→']} desc="Select the next snapshot — if none is selected, jumps to the last (newest)" />
           <ShortcutRow keys={['j', '↓']} desc="Scroll the snapshot details panel down" />
           <ShortcutRow keys={['k', '↑']} desc="Scroll the snapshot details panel up" />
+          <ShortcutRow keys={['f']} desc="Toggle fullscreen for the snapshot details panel (when open)" />
           <ShortcutRow keys={['Esc']} desc="Close the snapshot details panel" />
         </div>
       </div>

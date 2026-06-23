@@ -28,7 +28,6 @@ function FullscreenToggleIcon({ compress }) {
 
 const ResizableSidePanel = forwardRef(function ResizableSidePanel({
   accentColor,
-  title,
   header,
   children,
   onClose,
@@ -78,13 +77,26 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
     onLayoutChange?.({ isFullscreen, panelWidthRem })
   }, [isFullscreen, panelWidthRem, onLayoutChange])
 
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        setIsFullscreen(p => !p)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <div
-      className={`flex bg-surface z-[1000] shadow-xl ${
-        isFullscreen
-          ? 'fixed top-nav left-0 right-0 bottom-0 border-l-4 overflow-hidden'
-          : 'absolute top-4 right-4 max-h-panel max-w-panel rounded-xl overflow-hidden'
-      }`}
+      className={`flex bg-surface z-[1000] shadow-xl ${isFullscreen
+        ? 'fixed top-nav left-0 right-0 bottom-0 border-l-4 overflow-hidden'
+        : 'absolute top-4 right-4 max-h-panel max-w-panel rounded-xl overflow-hidden'
+        }`}
       style={{
         borderLeftColor: isFullscreen ? accentColor : undefined,
         width: isFullscreen ? undefined : `${panelWidthRem}rem`,
@@ -115,7 +127,7 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
       )}
       <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
         <div className={`flex items-start justify-between pt-5 pb-4 border-b border-edge shrink-0 ${contentPad}`}>
-          {header ?? (title ? <PanelHeader title={title} /> : null)}
+          {header}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"

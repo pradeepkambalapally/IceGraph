@@ -11,11 +11,11 @@ function SnapshotItem({ ts, id, operation, selectedId, onClick }) {
             <div className="flex justify-between items-start">
                 <div className="text-xs text-slate-300">{ts}</div>
                 {operation && (
-                    <span className={`text-tiny uppercase font-bold px-1.5 py-0.5 rounded ${operation === 'overwrite' ? 'bg-blue-950/80 text-blue-400 border border-blue-800' :
-                            operation === 'append' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800' :
-                                operation === 'replace' ? 'bg-amber-950/80 text-amber-400 border border-amber-800' :
-                                    operation === 'delete' ? 'bg-rose-950/80 text-rose-400 border border-rose-800' :
-                                        'bg-slate-800 text-slate-400 border border-slate-700'
+                    <span className={`text-xs uppercase font-bold px-1.5 py-0.5 rounded ${operation === 'overwrite' ? 'bg-blue-950/80 text-blue-400 border border-blue-800' :
+                        operation === 'append' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800' :
+                            operation === 'replace' ? 'bg-amber-950/80 text-amber-400 border border-amber-800' :
+                                operation === 'delete' ? 'bg-rose-950/80 text-rose-400 border border-rose-800' :
+                                    'bg-slate-800 text-slate-400 border border-slate-700'
                         }`}>
                         {operation}
                     </span>
