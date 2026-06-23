@@ -35,11 +35,6 @@ export default function MetadataStructured({ metadata, onSelect, selectedId }) {
                     ACTIVE
                   </span>
                 )}
-                <span className={`text-xs uppercase font-bold block mb-1 tracking-tighter
-                  ${isActive ? 'text-accent' : isSelected ? 'text-amber-600' : 'text-slate-400'}
-                `}>
-                  {labelPrefix}
-                </span>
                 <span className={`block text-xl font-black leading-none
                   ${isActive ? 'text-ink' : 'text-slate-300'}
                 `}>
