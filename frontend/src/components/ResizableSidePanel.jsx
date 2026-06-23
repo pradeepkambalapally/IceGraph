@@ -28,7 +28,6 @@ function FullscreenToggleIcon({ compress }) {
 
 const ResizableSidePanel = forwardRef(function ResizableSidePanel({
   accentColor,
-  title,
   header,
   children,
   onClose,
@@ -77,6 +76,20 @@ const ResizableSidePanel = forwardRef(function ResizableSidePanel({
   useEffect(() => {
     onLayoutChange?.({ isFullscreen, panelWidthRem })
   }, [isFullscreen, panelWidthRem, onLayoutChange])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        setIsFullscreen(p => !p)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div
