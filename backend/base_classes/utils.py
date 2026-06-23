@@ -39,16 +39,34 @@ def timed(fn):
     return wrapper
 
 
+def get_spark_row_value(row, *names):
+    for name in names:
+        value = getattr(row, name, None)
+        if value is None and hasattr(row, "__getitem__"):
+            with suppress(Exception):
+                value = row[name]
+        if value is not None:
+            return value
+    return None
+
+
+def qualify_table_name(catalog: str, namespace: str, table: str, default_catalog: str) -> str:
+    if catalog == default_catalog:
+        return f"{namespace}.{table}"
+    return f"{catalog}.{namespace}.{table}"
+
+
 def verify_iceberg_table(table_name: str) -> bool:
+    spark = SparkSession.builder.getOrCreate()
+
     with suppress(AnalysisException, AttributeError, IndexError):
-        spark = SparkSession.builder.getOrCreate()
-
-        df_desc = spark.sql(f"DESCRIBE FORMATTED {table_name}")
-        provider_row = df_desc.filter(df_desc.col_name == "Provider").collect()
-
+        provider_row = (
+            spark.sql(f"DESCRIBE FORMATTED {table_name}")
+            .filter(F.col("col_name") == "Provider")
+            .collect()
+        )
         if provider_row:
-            provider_value = provider_row[0].data_type.lower().strip()
-            return provider_value == "iceberg"
+            return provider_row[0].data_type.lower().strip() == "iceberg"
 
     raise AnalysisException(f"Table '{table_name}' is not an Iceberg table.")
 

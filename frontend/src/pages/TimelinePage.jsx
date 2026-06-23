@@ -1,5 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import CopyIconButton from '../components/CopyIconButton'
+import {
+  PanelDetailRow,
+  PanelHeader,
+  PanelSectionTitle,
+  PANEL_DIFF_AFTER_LABEL_CLASS,
+  PANEL_DIFF_AFTER_VALUE_CLASS,
+  PANEL_DIFF_BEFORE_LABEL_CLASS,
+  PANEL_DIFF_BEFORE_VALUE_CLASS,
+  PANEL_FIELD_LABEL_CLASS,
+  PANEL_FIELD_LABEL_WIDE_CLASS,
+} from '../components/PanelContent'
+import {
+  UI_BODY_MUTED_ITALIC_CLASS,
+  UI_HELPER_TEXT_CLASS,
+  UI_TOOLBAR_BUTTON_DEFAULT,
+  UI_ZOOM_INDICATOR_CLASS,
+} from '../uiTypography'
+import ResizableSidePanel from '../components/ResizableSidePanel'
 import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
 import { parseUtcDate } from '../utils/dateUtils'
@@ -70,6 +89,38 @@ function labelFor(type) {
   return 'Init'
 }
 
+const ZOOM_MIN = 0.35
+const ZOOM_MAX = 3
+const DEFAULT_VIEW = { zoom: 1, panX: 0, panY: 0 }
+
+function timelineSizes(zoom) {
+  return {
+    padY: 48 * zoom,
+    padX: 64 * zoom,
+    node: 44 * zoom,
+    connector: 56 * zoom,
+    gap: 8 * zoom,
+    textMax: 160 * zoom,
+    fontMicro: 9.6 * zoom,
+    fontDetail: 11.2 * zoom,
+    fontXs: 12 * zoom,
+    arrowTop: 4 * zoom,
+    arrowBottom: 4 * zoom,
+    arrowLeft: 7 * zoom,
+    nodeBorder: 2 * zoom,
+    outline: 2 * zoom,
+    outlineOffset: 3 * zoom,
+    durMb: 4 * zoom,
+  }
+}
+
+function contentNaturalSize(content, zoom) {
+  return {
+    width: content.offsetWidth / zoom,
+    height: content.offsetHeight / zoom,
+  }
+}
+
 function DiffRow({ label, before, after }) {
   const tryParse = (val) => {
     if (!val) return null
@@ -86,10 +137,10 @@ function DiffRow({ label, before, after }) {
     const allKeys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])).sort()
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">
+        <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
           {label.replace(/_/g, ' ')}
         </span>
-        <div className="bg-[#13171f] border border-[#2d3748] rounded-lg py-3 font-mono text-[0.7rem] overflow-x-auto shadow-2xl flex flex-col">
+        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-detail overflow-x-auto shadow-2xl flex flex-col">
           <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
           <div className="flex flex-col">
             {allKeys.map(key => {
@@ -155,39 +206,43 @@ function DiffRow({ label, before, after }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider">
+      <span className={`block ${PANEL_FIELD_LABEL_CLASS}`}>
         {label.replace(/_/g, ' ')}
       </span>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <div className="text-[0.55rem] text-red-400 font-bold uppercase mb-0.5">Before</div>
-          <pre className="text-xs bg-red-950/30 border border-red-900/40 text-red-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {tryFormat(before) ?? '—'}
-          </pre>
+          <div className={PANEL_DIFF_BEFORE_LABEL_CLASS}>Before</div>
+          <div className="relative">
+            {before && <CopyIconButton text={tryFormat(before)} className="absolute top-1.5 right-1.5 z-10" />}
+            <pre className={PANEL_DIFF_BEFORE_VALUE_CLASS}>
+              {tryFormat(before) ?? '—'}
+            </pre>
+          </div>
         </div>
         <div>
-          <div className="text-[0.55rem] text-green-400 font-bold uppercase mb-0.5">After</div>
-          <pre className="text-xs bg-green-950/30 border border-green-900/40 text-green-300 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all min-h-[32px]">
-            {tryFormat(after) ?? '—'}
-          </pre>
+          <div className={PANEL_DIFF_AFTER_LABEL_CLASS}>After</div>
+          <div className="relative">
+            {after && <CopyIconButton text={tryFormat(after)} className="absolute top-1.5 right-1.5 z-10" />}
+            <pre className={PANEL_DIFF_AFTER_VALUE_CLASS}>
+              {tryFormat(after) ?? '—'}
+            </pre>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
+
 function SnapSummary({ summary }) {
   const rows = parseSummary(summary)
   if (rows.length === 0) return null
   return (
     <div>
-      <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Summary</div>
-      <div className="flex flex-col">
+      <PanelSectionTitle>Summary</PanelSectionTitle>
+      <div className="flex flex-col gap-3">
         {rows.map(({ key, value }) => (
-          <div key={key} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-            <span className="text-xs text-slate-400">{key}</span>
-            <span className="text-xs font-mono text-[#e2e8f0]">{value}</span>
-          </div>
+          <PanelDetailRow key={key} label={key} value={value} />
         ))}
       </div>
     </div>
@@ -198,15 +253,20 @@ function DiffList({ diff }) {
   const rows = diff.filter(({ key }) => key !== 'type')
   return rows.length > 0
     ? rows.map(({ key, before, after }) => <DiffRow key={key} label={key} before={before} after={after} />)
-    : <p className="text-sm text-slate-400 italic">No tracked field changes detected.</p>
+    : <p className={UI_BODY_MUTED_ITALIC_CLASS}>No tracked field changes detected.</p>
 }
 
 export default function TimelinePage() {
   const { nodes } = useOutletContext()
   const [selected, setSelected] = useState(null)
+  const [view, setView] = useState(DEFAULT_VIEW)
+  const [isDragging, setIsDragging] = useState(false)
   const selectedRef = useRef(null)
   const eventsRef = useRef([])
-  const itemRefs = useRef([])
+  const viewportRef = useRef(null)
+  const contentRef = useRef(null)
+  const dragRef = useRef(null)
+  const didPanRef = useRef(false)
   const popupScrollRef = useRef(null)
   const popupScrollTargetRef = useRef(0)
   const popupScrollRafRef = useRef(null)
@@ -340,121 +400,197 @@ export default function TimelinePage() {
     return { events: timeline, snapshotMap: snapMap }
   }, [nodes])
 
+  const fitTimeline = () => {
+    const viewport = viewportRef.current
+    const content = contentRef.current
+    if (!viewport || !content) return
+    const padding = 48
+    const { width, height } = contentNaturalSize(content, view.zoom)
+    const fitZoom = Math.min(
+      1,
+      (viewport.clientWidth - padding) / width,
+      (viewport.clientHeight - padding) / height,
+    )
+    setView({
+      zoom: fitZoom,
+      panX: (viewport.clientWidth - width * fitZoom) / 2,
+      panY: (viewport.clientHeight - height * fitZoom) / 2,
+    })
+  }
+
   useEffect(() => {
     selectedRef.current = selected
     popupScrollTargetRef.current = 0
     if (popupScrollRef.current) popupScrollRef.current.scrollTop = 0
   }, [selected])
   useEffect(() => { eventsRef.current = events }, [events])
+
   useEffect(() => {
-    if (!selected) return
-    const idx = eventsRef.current.indexOf(selected)
-    if (idx >= 0 && itemRefs.current[idx]) {
-      itemRefs.current[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+    if (events.length === 0) return
+    const id = requestAnimationFrame(fitTimeline)
+    return () => cancelAnimationFrame(id)
+  }, [events.length])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const onWheel = (e) => {
+      e.preventDefault()
+      const rect = viewport.getBoundingClientRect()
+
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        setView(v => ({ ...v, panX: v.panX - e.deltaX }))
+        return
+      }
+      if (e.shiftKey) {
+        setView(v => ({ ...v, panX: v.panX - e.deltaY }))
+        return
+      }
+
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      const factor = Math.exp(-e.deltaY * 0.002)
+      setView(v => {
+        const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v.zoom * factor))
+        const scale = newZoom / v.zoom
+        return {
+          zoom: newZoom,
+          panX: cx - (cx - v.panX) * scale,
+          panY: cy - (cy - v.panY) * scale,
+        }
+      })
     }
-  }, [selected])
+
+    viewport.addEventListener('wheel', onWheel, { passive: false })
+    return () => viewport.removeEventListener('wheel', onWheel)
+  }, [])
+
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      if (!dragRef.current) return
+      const dx = e.clientX - dragRef.current.x
+      const dy = e.clientY - dragRef.current.y
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didPanRef.current = true
+      setView(v => ({
+        ...v,
+        panX: dragRef.current.panX + dx,
+        panY: dragRef.current.panY + dy,
+      }))
+    }
+    const onMouseUp = () => { dragRef.current = null; setIsDragging(false) }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  const startPan = (e) => {
+    if (e.button !== 0) return
+    dragRef.current = { x: e.clientX, y: e.clientY, panX: view.panX, panY: view.panY }
+    didPanRef.current = false
+    setIsDragging(true)
+  }
+
+  const selectEvent = (event) => {
+    if (!didPanRef.current) setSelected(event)
+  }
 
   if (events.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#0d1117]">
-        <p className="text-slate-500 text-sm italic">No metadata history available.</p>
+      <div className="flex-1 flex items-center justify-center bg-canvas">
+        <p className={UI_BODY_MUTED_ITALIC_CLASS}>No metadata history available.</p>
       </div>
     )
   }
 
   const selectedSnap = selected ? snapshotMap[selected.snapshotId] : null
-
-  const scrollRef = useRef(null)
-  const targetScrollRef = useRef(0)
-  const rafRef = useRef(null)
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    targetScrollRef.current = el.scrollLeft
-    const onWheel = (e) => {
-      if (e.deltaY === 0) return
-      e.preventDefault()
-      targetScrollRef.current = Math.max(
-        0,
-        Math.min(targetScrollRef.current + e.deltaY, el.scrollWidth - el.clientWidth)
-      )
-      if (rafRef.current) return
-      const animate = () => {
-        const diff = targetScrollRef.current - el.scrollLeft
-        if (Math.abs(diff) < 0.5) {
-          el.scrollLeft = targetScrollRef.current
-          rafRef.current = null
-          return
-        }
-        el.scrollLeft += diff * 0.12
-        rafRef.current = requestAnimationFrame(animate)
-      }
-      rafRef.current = requestAnimationFrame(animate)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => {
-      el.removeEventListener('wheel', onWheel)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
+  const closePanel = () => setSelected(null)
+  const tl = timelineSizes(view.zoom)
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0d1117] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-canvas overflow-hidden relative">
 
       <div className="shrink-0 px-8 pt-5 flex items-center gap-5">
         {[['A', 'Write'], ['C', 'Branch Write'], ['B', 'Metadata Op'], ['init', 'Initial State']].map(([type, lbl]) => (
           <div key={type} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorFor(type) }} />
-            <span className="text-xs text-slate-400">{lbl}</span>
+            <span className={UI_HELPER_TEXT_CLASS}>{lbl}</span>
           </div>
         ))}
       </div>
 
-      <div ref={scrollRef} className="flex-1 flex items-center overflow-x-auto">
-        <div className="flex items-start min-w-max px-16 py-12">
+      <div
+        ref={viewportRef}
+        className={`flex-1 relative overflow-hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        onMouseDown={startPan}
+      >
+        <div
+          className="absolute top-0 left-0"
+          style={{ transform: `translate(${view.panX}px, ${view.panY}px)` }}
+        >
+          <div
+            ref={contentRef}
+            className="flex items-start min-w-max"
+            style={{ padding: `${tl.padY}px ${tl.padX}px` }}
+          >
           {events.map((event, i) => {
             const ts = formatTs(event.details.timestamp)
             const fileName = shortFileName(event.details.file_path)
             return (
-              <div key={i} className="flex items-center" ref={el => { itemRefs.current[i] = el }}>
+              <div key={i} className="flex items-center">
                 {i > 0 && (
                   <div className="flex flex-col items-center shrink-0">
-                    <div className="text-[0.6rem] text-slate-500 mb-1">
+                    <div
+                      className="text-slate-500"
+                      style={{ fontSize: tl.fontMicro, marginBottom: tl.durMb }}
+                    >
                       {formatDuration(events[i - 1].details.timestamp, events[i].details.timestamp)}
                     </div>
                     <div className="flex items-center">
-                      <div className="w-14 h-px bg-[#2d3748]" />
+                      <div className="h-px bg-edge" style={{ width: tl.connector }} />
                       <div style={{
                         width: 0, height: 0,
-                        borderTop: '4px solid transparent',
-                        borderBottom: '4px solid transparent',
-                        borderLeft: '7px solid #2d3748',
+                        borderTop: `${tl.arrowTop}px solid transparent`,
+                        borderBottom: `${tl.arrowBottom}px solid transparent`,
+                        borderLeft: `${tl.arrowLeft}px solid #2d3748`,
                       }} />
                     </div>
                   </div>
                 )}
                 <div
-                  className="flex flex-col items-center gap-2 cursor-pointer group select-none"
-                  onClick={() => setSelected(event)}
+                  className="flex flex-col items-center cursor-pointer select-none"
+                  style={{ gap: tl.gap }}
+                  onClick={() => selectEvent(event)}
                 >
-                  <div className="text-center max-w-[160px]">
+                  <div className="text-center" style={{ maxWidth: tl.textMax }}>
                     <div
-                      className="text-xs font-mono font-bold leading-tight break-all"
-                      style={{ color: colorFor(event.type) }}
+                      className="font-mono font-bold leading-tight break-all"
+                      style={{ fontSize: tl.fontXs, color: colorFor(event.type) }}
                       title={event.details.file_path ?? ''}
                     >
                       {fileName}
                     </div>
                   </div>
                   <div
-                    className={`w-11 h-11 rounded-full border-2 shadow-lg transition-transform group-hover:scale-110 shrink-0 ${selected === event ? 'scale-110' : ''}`}
-                    style={{ backgroundColor: colorFor(event.type), borderColor: colorFor(event.type), ...(selected === event ? { outline: '2px solid white', outlineOffset: '3px' } : {}) }}
+                    className="rounded-full shadow-lg shrink-0 transition-[outline]"
+                    style={{
+                      width: tl.node,
+                      height: tl.node,
+                      borderWidth: tl.nodeBorder,
+                      borderStyle: 'solid',
+                      backgroundColor: colorFor(event.type),
+                      borderColor: colorFor(event.type),
+                      ...(selected === event ? { outline: `${tl.outline}px solid white`, outlineOffset: tl.outlineOffset } : {}),
+                    }}
                   />
-                  <div className="text-center max-w-[160px]">
+                  <div className="text-center" style={{ maxWidth: tl.textMax }}>
                     {ts && (
                       <>
-                        <div className="text-[0.7rem] text-slate-500 leading-tight">{ts.date}</div>
-                        <div className="text-[0.7rem] text-slate-600 leading-tight">{ts.time}</div>
+                        <div className="text-slate-500 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.date}</div>
+                        <div className="text-slate-600 leading-tight" style={{ fontSize: tl.fontDetail }}>{ts.time}</div>
                       </>
                     )}
                   </div>
@@ -462,143 +598,94 @@ export default function TimelinePage() {
               </div>
             )
           })}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-10 font-sans w-52">
+        <button
+          type="button"
+          className={UI_TOOLBAR_BUTTON_DEFAULT}
+          onClick={fitTimeline}
+          onMouseDown={e => e.preventDefault()}
+        >
+          Fit Timeline
+        </button>
+        <div className={UI_ZOOM_INDICATOR_CLASS}>
+          {Math.round(view.zoom * 100)}%
         </div>
       </div>
 
       {selected && (
-        <div
-          className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center font-sans"
-          onClick={() => setSelected(null)}
+        <ResizableSidePanel
+          ref={popupScrollRef}
+          accentColor={colorFor(selected.type)}
+          onClose={closePanel}
+          header={(
+            <PanelHeader
+              title={labelFor(selected.type)}
+              titleColor={colorFor(selected.type)}
+              subtitle={selected.details.file_path}
+              meta={formatTs(selected.details.timestamp)?.full}
+            />
+          )}
         >
-          <div
-            className="w-[60vw] min-w-[420px] max-w-[860px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col overflow-hidden"
-            style={{ borderLeft: `4px solid ${colorFor(selected.type)}` }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] shrink-0">
-              <div className="min-w-0 pr-4">
-                <div className="font-bold text-sm" style={{ color: colorFor(selected.type) }}>
-                  {labelFor(selected.type)}
-                </div>
-                <div className="text-xs font-mono text-[#e2e8f0] mt-0.5 break-all">
-                  {selected.details.file_path}
-                </div>
-                {formatTs(selected.details.timestamp) && (
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {formatTs(selected.details.timestamp).full}
-                  </div>
-                )}
+          {selected.type === 'A' && (
+            <>
+              <PanelDetailRow label="Snapshot ID" value={selected.snapshotId} />
+              {selectedSnap && (
+                <>
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
+                </>
+              )}
+            </>
+          )}
+
+          {selected.type === 'C' && (
+            <>
+              <PanelDetailRow label="Branch Name" value={selected.branchName} />
+              <PanelDetailRow label="Snapshot ID" value={selected.snapshotId} />
+              {selectedSnap && (
+                <>
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
+                </>
+              )}
+              <div className="mt-2 border-t border-edge pt-4">
+                <PanelSectionTitle className="mb-3">Metadata Changes</PanelSectionTitle>
+                <DiffList diff={selected.diff} />
               </div>
-              <button
-                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-sm cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
-                onClick={() => setSelected(null)}
-              >
-                ✕
-              </button>
-            </div>
+            </>
+          )}
 
-            <div ref={popupScrollRef} className="overflow-y-auto px-6 py-5 flex flex-col gap-5">
+          {selected.type === 'B' && <DiffList diff={selected.diff} />}
 
-              {selected.type === 'A' && (
+          {selected.type === 'init' && (
+            <>
+              <PanelDetailRow label="Snapshot ID" value={selected.details.snapshot_id} />
+              <PanelDetailRow label="Schema ID" value={selected.details.current_schema_id} />
+              <PanelDetailRow label="Spec ID" value={selected.details.partition_spec_id} />
+              <PanelDetailRow label="Sort Order ID" value={selected.details.sort_order_id} />
+              {selectedSnap && (
                 <>
-                  <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                    <span className="text-xs text-slate-400">Snapshot ID</span>
-                    <span className="text-xs font-mono text-[#e2e8f0]">{selected.snapshotId ?? '—'}</span>
-                  </div>
-                  {selectedSnap && (
-                    <>
-                      <div>
-                        <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                        <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                          {selectedSnap.operation ?? '—'}
-                        </span>
-                      </div>
-                      <SnapSummary summary={selectedSnap.summary} />
-                    </>
-                  )}
+                  <PanelDetailRow label="Operation" value={selectedSnap.operation} />
+                  <SnapSummary summary={selectedSnap.summary} />
                 </>
               )}
-
-              {selected.type === 'C' && (
-                <>
+              {parseProperties(selected.details.properties).length > 0 && (
+                <div>
+                  <PanelSectionTitle>Properties</PanelSectionTitle>
                   <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                      <span className="text-xs text-slate-400">Branch Name</span>
-                      <span className="text-xs font-bold text-[#D97706] bg-[#3a200a] px-2 py-0.5 rounded">{selected.branchName ?? '—'}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-1.5 border-b border-[#2d3748]">
-                      <span className="text-xs text-slate-400">Snapshot ID</span>
-                      <span className="text-xs font-mono text-[#e2e8f0]">{selected.snapshotId ?? '—'}</span>
-                    </div>
-                    {selectedSnap && (
-                      <>
-                        <div>
-                          <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                          <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                            {selectedSnap.operation ?? '—'}
-                          </span>
-                        </div>
-                        <SnapSummary summary={selectedSnap.summary} />
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-4 border-t border-[#2d3748] pt-4">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Metadata Changes</div>
-                    <DiffList diff={selected.diff} />
-                  </div>
-                </>
-              )}
-
-              {selected.type === 'B' && <DiffList diff={selected.diff} />}
-
-              {selected.type === 'init' && (
-                <>
-                  <div className="flex flex-col">
-                    {[
-                      ['Snapshot ID', selected.details.snapshot_id],
-                      ['Schema ID', selected.details.current_schema_id],
-                      ['Spec ID', selected.details.partition_spec_id],
-                      ['Sort Order ID', selected.details.sort_order_id],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex justify-between items-center py-1.5 border-b border-[#2d3748] last:border-0">
-                        <span className="text-xs text-slate-400">{label}</span>
-                        <span className="text-xs font-mono text-[#e2e8f0]">{value ?? '—'}</span>
-                      </div>
+                    {parseProperties(selected.details.properties).map(({ key, value }) => (
+                      <PanelDetailRow key={key} label={key} value={value} />
                     ))}
                   </div>
-
-                  {selectedSnap && (
-                    <>
-                      <div>
-                        <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Operation</div>
-                        <span className="text-xs font-mono text-[#2E86C1] bg-[#1e3a5f] px-2.5 py-1 rounded">
-                          {selectedSnap.operation ?? '—'}
-                        </span>
-                      </div>
-                      <SnapSummary summary={selectedSnap.summary} />
-                    </>
-                  )}
-
-                  {parseProperties(selected.details.properties).length > 0 && (
-                    <div>
-                      <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Properties</div>
-                      <div className="flex flex-col">
-                        {parseProperties(selected.details.properties).map(({ key, value }) => (
-                          <div key={key} className="flex justify-between items-start gap-4 py-1.5 border-b border-[#2d3748] last:border-0">
-                            <span className="text-xs font-mono text-[#2E86C1] shrink-0">{key}</span>
-                            <span className="text-xs text-[#e2e8f0] text-right break-all">{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
-
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+        </ResizableSidePanel>
       )}
     </div>
   )

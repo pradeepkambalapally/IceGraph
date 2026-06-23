@@ -1,4 +1,4 @@
-FROM node:20-slim AS frontend-builder
+FROM node:24-slim AS frontend-builder
 WORKDIR /build
 
 COPY frontend/package*.json ./
@@ -6,16 +6,18 @@ RUN npm ci
 COPY frontend ./
 RUN npm run build
 
-FROM python:3.9-slim AS builder
+FROM python:3.12-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 COPY backend/pyproject.toml backend/uv.lock ./
 
-ENV UV_COMPILE_BYTECODE=1 
-RUN uv sync --frozen --no-dev --no-install-project
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
-FROM python:3.9-slim
+FROM python:3.12-slim
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv

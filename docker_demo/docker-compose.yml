@@ -1,5 +1,3 @@
-version: "3.8"
-
 # ─────────────────────────────────────────────────────────────────
 # IceGraph demo stack.
 # Using HADOOP Catalog.
@@ -53,7 +51,7 @@ services:
       - "--conf"
       - "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
       - "--conf"
-      - "spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkSessionCatalog"
+      - "spark.sql.catalog.spark_catalog=org.apache.iceberg.spark.SparkCatalog"
       - "--conf"
       - "spark.sql.catalog.spark_catalog.type=hadoop"
       - "--conf"
@@ -96,7 +94,9 @@ services:
       - SPARK_REMOTE=sc://spark-connect:15002
 
   icegraph:
-    image: yanivzalach/icegraph:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     depends_on:

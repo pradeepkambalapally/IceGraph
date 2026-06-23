@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
+import { UI_DOCS_BODY_CLASS, UI_DOCS_NAV_TITLE_CLASS } from '../uiTypography'
 
 function Key({ k }) {
   return (
-    <kbd className="bg-[#252d3d] border border-[#3d4a5c] text-[#7dd3fc] text-xs font-mono px-2 py-0.5 rounded">
+    <kbd className="bg-surface-hover border border-[#3d4a5c] text-[#7dd3fc] text-xs font-mono px-2 py-0.5 rounded">
       {k}
     </kbd>
   )
@@ -31,13 +32,26 @@ const SECTIONS = [
     body: (
       <div className="space-y-4">
         <p>
-          IceGraph lets you explore Apache Iceberg tables visually. It reads your table's metadata
-          and renders it as an interactive graph so you can trace how the table evolved over time,
-          understand its structure, and debug unexpected states.
+          IceGraph is an open source Apache Iceberg debugging and visualization platform. Trace
+          production Iceberg tables through a graph based UI built for debugging complex metadata
+          states, analyzing table evolution, and learning how Iceberg works under the hood.
         </p>
         <p>
           Everything is <strong className="text-white">read-only</strong>.
         </p>
+        <div className="border-t border-edge pt-4 flex flex-col gap-2 text-xs">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-slate-500 uppercase tracking-wider text-tiny font-semibold">Source</span>
+            <a
+              href="https://github.com/YanivZalach/IceGraph"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:text-blue-400 transition font-mono"
+            >
+              github.com/YanivZalach/IceGraph
+            </a>
+          </div>
+        </div>
       </div>
     ),
   },
@@ -50,7 +64,8 @@ const SECTIONS = [
           <h3 className="text-white font-semibold">1. Enter the table name</h3>
           <p>
             From the Home page, type the fully-qualified name of your Iceberg table
-            (e.g. <code className="bg-[#252d3d] px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Load.
+            (e.g. <code className="bg-surface-hover px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Continue.
+            You can also click <strong className="text-white">Browse catalog</strong> to list Iceberg tables from the Spark catalog. Use the filter field to narrow the list when many tables are available. Only tables that IceGraph can load (verified via the same metadata path used for visualization) are shown.
           </p>
         </div>
         <div className="space-y-2">
@@ -65,6 +80,14 @@ const SECTIONS = [
           <p>
             IceGraph fetches the metadata in the background. Once ready, you land on the Graph view.
             Large ranges with many data files may take a moment.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Switching tables</h3>
+          <p>
+            While viewing a table, click the table name in the navbar to change tables. Enter a new
+            table or use <strong className="text-white">Browse catalog</strong>, then click Continue.
+            IceGraph opens the new table in a separate browser tab so your current graph stays loaded.
           </p>
         </div>
       </div>
@@ -90,9 +113,22 @@ const SECTIONS = [
         <div className="space-y-2">
           <h3 className="text-white font-semibold">Interactions</h3>
           <ul className="list-disc list-inside space-y-1">
-            <li>Click a node to select it and inspect its details in the side panel</li>
+            <li>Click a node to select it and open its details in the side panel</li>
             <li>Drag a node to reposition it</li>
             <li>Scroll to zoom, drag the background to pan</li>
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Details panel</h3>
+          <p>
+            The panel on the right lists every metadata field for the selected node. The header shows the
+            file type, path, and timestamp; fields below use the same layout as Timeline and other views.
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong className="text-white">Resize</strong> — drag the grip handle on the left edge of the panel to widen it. Wider panels give text fields more room and show more lines before you need to expand a field.</li>
+            <li><strong className="text-white">Fullscreen</strong> — click the expand button in the panel header to fill the graph area. Click the compress button or press <strong className="text-white">Esc</strong> to exit.</li>
+            <li><strong className="text-white">Copy</strong> — click the clipboard icon inside any field to copy its value.</li>
+            <li><strong className="text-white">Long values</strong> — fields with many lines can be expanded or collapsed individually with <strong className="text-white">Show all</strong> / <strong className="text-white">Collapse</strong>.</li>
           </ul>
         </div>
         <div className="space-y-2">
@@ -117,6 +153,7 @@ const SECTIONS = [
         </p>
         <ul className="list-disc list-inside space-y-1">
           <li>Column IDs are stable even when columns are renamed — useful for tracing schema evolution</li>
+          <li><strong className="text-white">Overview</strong> fields include a clipboard icon to copy individual values</li>
         </ul>
       </div>
     ),
@@ -143,6 +180,23 @@ const SECTIONS = [
           Use the Timeline to pinpoint when a large write happened, spot unexpected deletes, or
           verify that a compaction job ran as expected.
         </p>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Zoom &amp; pan</h3>
+          <p>
+            Scroll the mouse wheel to zoom in and out (text and nodes scale together, like Graph view).
+            Drag the timeline background to pan. Use horizontal trackpad scroll or Shift + wheel to pan
+            sideways without zooming. <strong className="text-white">Fit Timeline</strong> scales the full
+            history to the viewport and centers it.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-white font-semibold">Details panel</h3>
+          <p>
+            Click a timeline event to open its details in a panel on the right — the same panel used in
+            Graph view. Drag the left-edge grip to widen it, use fullscreen to expand, and copy field
+            values with the clipboard icon.
+          </p>
+        </div>
       </div>
     ),
   },
@@ -258,9 +312,9 @@ const SECTIONS = [
           <ShortcutRow keys={['Enter', 'Space']} desc="Jump to the main metadata node" />
           <ShortcutRow keys={['h', '←']} desc="Navigate to the selected node's parent(s)" />
           <ShortcutRow keys={['l', '→']} desc="Navigate to the selected node's child(ren)" />
-          <ShortcutRow keys={['j', '↓']} desc="Scroll down" />
-          <ShortcutRow keys={['k', '↑']} desc="Scroll up" />
-          <ShortcutRow keys={['Esc']} desc="Deselect the current node" />
+          <ShortcutRow keys={['j', '↓']} desc="Scroll the node details panel down (when open)" />
+          <ShortcutRow keys={['k', '↑']} desc="Scroll the node details panel up (when open)" />
+          <ShortcutRow keys={['Esc']} desc="Close the node details panel" />
         </div>
 
         <div className="space-y-1">
@@ -271,6 +325,9 @@ const SECTIONS = [
 
         <div className="space-y-1">
           <h3 className="text-white font-semibold mb-2">Timeline View</h3>
+          <ShortcutRow keys={['Scroll']} desc="Zoom in / out on the timeline" />
+          <ShortcutRow keys={['Drag']} desc="Pan the timeline" />
+          <ShortcutRow keys={['Shift', 'Scroll']} desc="Pan the timeline horizontally" />
           <ShortcutRow keys={['h', '←']} desc="Select the previous snapshot — if none is selected, jumps to the first (oldest)" />
           <ShortcutRow keys={['l', '→']} desc="Select the next snapshot — if none is selected, jumps to the last (newest)" />
           <ShortcutRow keys={['j', '↓']} desc="Scroll the snapshot details panel down" />
@@ -317,17 +374,17 @@ export default function DocsPage() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <aside className="w-52 shrink-0 bg-[#151b26] border-r border-[#2d3748] overflow-y-auto hidden sm:block">
+      <aside className="w-52 shrink-0 bg-[#151b26] border-r border-edge overflow-y-auto hidden sm:block">
         <div className="px-4 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Documentation</p>
+          <p className={UI_DOCS_NAV_TITLE_CLASS}>Documentation</p>
           <nav className="flex flex-col gap-0.5">
             {SECTIONS.map(s => (
               <button
                 key={s.id}
                 onClick={() => setActive(s.id)}
                 className={`text-left text-sm px-3 py-2 rounded-md transition ${active === s.id
-                  ? 'bg-[#1e3a5f] text-white font-medium'
-                  : 'text-slate-400 hover:text-white hover:bg-[#252d3d]'
+                  ? 'bg-accent-muted text-white font-medium'
+                  : 'text-slate-400 hover:text-white hover:bg-surface-hover'
                   }`}
               >
                 {s.title}
@@ -342,7 +399,7 @@ export default function DocsPage() {
           <select
             value={active}
             onChange={e => setActive(e.target.value)}
-            className="w-full bg-[#252d3d] text-white text-sm border border-[#2d3748] rounded-md px-3 py-2"
+            className="w-full bg-surface-hover text-white text-sm border border-edge rounded-md px-3 py-2"
           >
             {SECTIONS.map(s => (
               <option key={s.id} value={s.id}>{s.title}</option>
@@ -352,7 +409,7 @@ export default function DocsPage() {
 
         <div className="max-w-3xl mx-auto px-6 py-8">
           <h1 className="text-2xl font-bold text-white mb-6">{activeSection.title}</h1>
-          <div className="text-slate-300 text-sm leading-relaxed">
+          <div className={UI_DOCS_BODY_CLASS}>
             {activeSection.body}
           </div>
         </div>

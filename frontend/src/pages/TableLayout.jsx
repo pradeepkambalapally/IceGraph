@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 import { IS_MOCK, MOCK_HOME_ROUTE } from '../appConstants'
+import { UI_BODY_MUTED_CLASS, UI_DIALOG_TITLE_CLASS, UI_MONO_MUTED_CLASS } from '../uiTypography'
 
 import MetadataStructured from '../components/MetadataStructured'
 import { useTableSpecs } from '../context/TableSpecsContext'
@@ -251,9 +252,9 @@ export default function TableLayout() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d1117]">
-        <div className="w-10 h-10 border-4 border-[#2d3748] border-t-[#2E86C1] rounded-full animate-spin mb-4" />
-        <p className="text-slate-400 text-sm">
+      <div className="flex-1 flex flex-col items-center justify-center bg-canvas">
+        <div className="w-10 h-10 border-4 border-edge border-t-accent rounded-full animate-spin mb-4" />
+        <p className={UI_BODY_MUTED_CLASS}>
           Loading data for <strong>{tableName}</strong>…
         </p>
       </div>
@@ -279,12 +280,12 @@ export default function TableLayout() {
     }
 
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#0d1117] p-6">
+      <div className="flex-1 flex flex-col items-center justify-center bg-canvas p-6">
         <div className="bg-red-950/50 border border-red-800 text-red-400 px-8 py-6 rounded-xl text-center max-w-lg w-full">
           <h2 className="font-bold mb-2">Request Failed</h2>
           {errorDisplay}
           <button
-            className="mt-6 px-5 py-2.5 rounded-lg border-2 border-[#2E86C1] bg-[#2E86C1] text-white font-bold text-sm cursor-pointer hover:bg-[#2471a3] transition"
+            className="mt-6 px-5 py-2.5 rounded-lg border-2 border-accent bg-accent text-white font-bold text-sm cursor-pointer hover:bg-accent-dark transition"
             onClick={() => navigate(IS_MOCK ? MOCK_HOME_ROUTE : '/')}
           >
             ← Back to Home
@@ -325,16 +326,16 @@ export default function TableLayout() {
           onClick={() => { setDetailsOpen(false); setSelectionDetail(null) }}
         >
           <div
-            className="w-[50vw] min-w-[340px] max-w-[720px] bg-[#1a202c] rounded-xl shadow-2xl border border-[#2d3748] max-h-[80vh] flex flex-col"
+            className="w-1/2 min-w-85 max-w-3xl bg-surface rounded-xl shadow-2xl border border-edge max-h-[80dvh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-edge shrink-0">
               <div>
-                <div className="font-bold text-[#e2e8f0] text-sm">Table Specification</div>
-                <div className="text-xs text-slate-400 font-mono mt-0.5">{metadata?.['table-name']}</div>
+                <div className={UI_DIALOG_TITLE_CLASS}>Table Specification</div>
+                <div className={`${UI_MONO_MUTED_CLASS} mt-0.5`}>{metadata?.['table-name']}</div>
               </div>
               <button
-                className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition"
+                className="w-7 h-7 rounded-full bg-edge text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-edge-hover hover:text-slate-200 transition"
                 onClick={() => { setDetailsOpen(false); setSelectionDetail(null) }}
               >
                 ✕
@@ -349,8 +350,8 @@ export default function TableLayout() {
               />
 
               {selectionDetail && (
-                <div ref={detailPanelRef} className="rounded-lg border-2 border-[#2E86C1]">
-                  <div className="flex items-center justify-between px-4 py-2 bg-[#2E86C1]">
+                <div ref={detailPanelRef} className="rounded-lg border-2 border-accent">
+                  <div className="flex items-center justify-between px-4 py-2 bg-accent">
                     <span className="text-sm font-bold text-white">{selectionDetail.label}</span>
                     <button
                       className="text-white/70 hover:text-white text-xl leading-none cursor-pointer transition"
@@ -375,12 +376,12 @@ export default function TableLayout() {
           onClick={() => setIssuesOpen(false)}
         >
           <div
-            className="w-[50vw] min-w-[400px] max-w-[800px] bg-[#1a202c] rounded-xl shadow-2xl border border-slate-800 max-h-[80vh] flex flex-col overflow-hidden"
+            className="w-1/2 min-w-100 max-w-4xl bg-surface rounded-xl shadow-2xl border border-slate-800 max-h-[80dvh] flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/30 bg-slate-800/20 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="font-bold text-[#e2e8f0] text-base tracking-tight">System Issues</span>
+                <span className="font-bold text-ink text-base tracking-tight">System Issues</span>
               </div>
               <button
                 className="w-7 h-7 rounded-full bg-slate-800/30 text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-slate-800/50 hover:text-slate-200 transition"
@@ -400,11 +401,11 @@ export default function TableLayout() {
                   {Object.entries(errors).map(([op, err], i) => (
                     <div key={`err-${i}`} className="bg-red-950/10 rounded-xl border border-red-900/30 overflow-hidden flex flex-col">
                       <div className="px-5 py-3 border-b border-red-900/10 bg-red-900/5">
-                        <span className="text-[0.6rem] font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Source</span>
+                        <span className="text-micro font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Source</span>
                         <div className="text-xs font-mono text-red-200 break-all">{op}</div>
                       </div>
                       <div className="px-5 py-4">
-                        <span className="text-[0.6rem] font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
+                        <span className="text-micro font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
                         <div className="text-xs text-red-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{err}</div>
                       </div>
                     </div>
@@ -421,11 +422,11 @@ export default function TableLayout() {
                   {Object.entries(warnings).map(([op, msg], i) => (
                     <div key={`warn-${i}`} className="bg-amber-950/10 rounded-xl border border-amber-900/30 overflow-hidden flex flex-col">
                       <div className="px-5 py-3 border-b border-amber-900/10 bg-amber-900/5">
-                        <span className="text-[0.6rem] font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Context</span>
+                        <span className="text-micro font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Context</span>
                         <div className="text-xs font-mono text-amber-200 break-all">{op}</div>
                       </div>
                       <div className="px-5 py-4">
-                        <span className="text-[0.6rem] font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
+                        <span className="text-micro font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
                         <div className="text-xs text-amber-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{msg}</div>
                       </div>
                     </div>

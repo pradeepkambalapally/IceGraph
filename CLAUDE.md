@@ -49,7 +49,7 @@ cd docker_demo && docker compose up   # Full demo stack with mock Iceberg tables
 
 **Backend** (`/backend/`) — Flask API that reads Iceberg metadata via Spark Connect:
 
-- `main.py` — Flask app with 3 routes; uses `ThreadPoolExecutor` for async job processing
+- `main.py` — Flask app with API routes; uses `ThreadPoolExecutor` for async job processing
 - `collectors/` — Pull Iceberg metadata via Spark: snapshots → metadata files → manifests → data files
 - `table_inventory/` — Orchestrates collection into a unified inventory structure
 - `search_cutoff/` — Optimizes snapshot iteration range to avoid full scans
@@ -61,13 +61,53 @@ cd docker_demo && docker compose up   # Full demo stack with mock Iceberg tables
 
 - Pages: `GraphPage` (force-graph visualization), `MetadataPage`, `TimelinePage`, `FileTreePage`, `SnapshotSelectionPage`
 - `TableLayout.jsx` wraps all table-specific pages; `TableSpecsContext.jsx` shares table state
-- `graphConstants.js` defines node/link visual constants
+- `graphConstants.js` defines node/link visual constants and `fileTypeLabel()` for human-readable node types
+- `uiTypography.js` — shared Tailwind class tokens for labels, body text, inputs, buttons, and toolbar controls
+- `components/PanelContent.jsx` — side-panel components (`PanelHeader`, `PanelDetailRow`, `PanelSectionTitle`) and panel-specific typography tokens
+- `components/ResizableSidePanel.jsx` — draggable side panel shell used by Graph and Timeline
 - `mocks/` — MSW handlers used in the GitHub Pages demo (no real backend)
 
 **API flow:**
-1. `GET /api/v1/snapshot-map/<table>` — load snapshot history for UI selection
-2. `POST /api/v1/graph-data` — submit async job with table name + snapshot range
-3. `GET /api/v1/graph-data/<job_id>` — poll until complete, returns graph JSON
+1. `GET /api/v1/tables` — list Iceberg tables from the Spark catalog (for Home and navbar picker)
+2. `GET /api/v1/snapshot-map/<table>` — load snapshot history for UI selection
+3. `POST /api/v1/graph-data` — submit async job with table name + snapshot range
+4. `GET /api/v1/graph-data/<job_id>` — poll until complete, returns graph JSON
+
+## Frontend Styling Conventions
+
+Typography and repeated UI patterns live in `frontend/src/uiTypography.js`. Prefer importing tokens from there instead of duplicating Tailwind class strings.
+
+**Token layers:**
+
+| File | Role |
+|---|---|
+| `uiTypography.js` | App-wide tokens: form labels, muted body text, inputs, primary/toolbar buttons, mono text |
+| `PanelContent.jsx` | Side-panel tokens and components; re-exports field-label tokens from `uiTypography.js` |
+| `graphConstants.js` | Graph-specific visuals (`NODE_STYLE_MAP`, `fileTypeLabel`) |
+
+**Common tokens:**
+
+- `UI_BODY_MUTED_CLASS` — secondary paragraph text (`text-sm text-slate-400`)
+- `UI_FIELD_LABEL_CLASS` — uppercase field labels in panels and metadata rows (caption size, slate-500)
+- `UI_FORM_LABEL_CLASS` — uppercase form labels (xs size, slate-400, block)
+- `UI_TOOLBAR_BUTTON_BASE` — standard graph toolbar button with `py-2.5`
+- `UI_TOOLBAR_BUTTON_LAYOUT` — same toolbar look **without** vertical padding; use for split buttons (e.g. Inspect/Locked) where inner spans supply `py-2.5`
+- `toolbarButtonClass(active)` — active/inactive toolbar button variant
+
+**Side panel:** Graph and Timeline both use `ResizableSidePanel` + `PanelContent`. Panel headers call `fileTypeLabel(nodeType)` from `graphConstants.js`. Timeline diff rows use `PANEL_DIFF_*` tokens for Before/After labels and values.
+
+**When adding UI:** check `uiTypography.js` first; add a new token only when the pattern is reused or is a composed variant (base + modifier). Avoid aliasing identical classes under different names.
+
+## Table Catalog (Backend)
+
+`backend/table_catalog/` serves `GET /api/v1/tables`:
+
+- Uses Spark catalog API (`listCatalogs`, `listDatabases`, `listTables`) instead of raw `SHOW TABLES` SQL
+- For the default catalog, calls `listTables(database)` without a catalog argument (required for `spark_catalog`)
+- Filters to verified Iceberg tables via `verify_iceberg_table`
+- Caches results — see `TABLE_LIST_CACHE_TTL_SECONDS` in Key Configuration below
+
+See **Key Configuration** for related environment variables.
 
 ## Key Configuration
 
@@ -80,6 +120,8 @@ Backend environment variables (set in `backend/.env`):
 | `MAX_DATA_FILES_TO_COLLECT` | 5000 | Data file iteration limit |
 | `MAX_NUMBER_OF_GRAPHS_TO_COMPUTE` | 15 | Concurrent job limit |
 | `MAX_SNAPSHOTS_TO_SHOW` | 2000 | Snapshot selection UI limit |
+| `TABLE_LIST_INCLUDE_SESSION_CATALOG` | `true` | Include Spark session catalog in `/api/v1/tables` |
+| `TABLE_LIST_CACHE_TTL_SECONDS` | 60 | Cache TTL for table list endpoint |
 
 ## Deployment Notes
 

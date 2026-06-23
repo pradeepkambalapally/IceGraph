@@ -1,11 +1,13 @@
+import { UI_STRUCTURED_SECTION_TITLE_CLASS } from '../uiTypography'
+
 export default function MetadataStructured({ metadata, onSelect, selectedId }) {
   const renderBoxes = (items, idKey, labelPrefix, activeId, type) => {
     if (!items || !Array.isArray(items)) return null
     return (
       <div className="mb-6">
-        <div className="text-[0.65rem] font-black text-slate-400 uppercase tracking-[0.1em] mb-3 border-b border-[#2d3748] pb-1.5 flex justify-between items-center">
+        <div className={UI_STRUCTURED_SECTION_TITLE_CLASS}>
           <span>{labelPrefix} History</span>
-          <span className="text-[0.6rem] font-medium normal-case bg-[#2d3748] px-2 py-0.5 rounded-full text-slate-400">
+          <span className="text-micro font-medium normal-case bg-edge px-2 py-0.5 rounded-full text-slate-400">
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
         </div>
@@ -20,26 +22,26 @@ export default function MetadataStructured({ metadata, onSelect, selectedId }) {
                 key={id}
                 className={`relative p-3 min-w-[70px] text-center cursor-pointer rounded-xl border-2 transition-all duration-200 group
                   ${isActive
-                    ? 'border-[#2E86C1] bg-[#1e3a5f] shadow-sm'
+                    ? 'border-accent bg-accent-muted shadow-sm'
                     : isSelected
                       ? 'border-amber-400 bg-amber-900/20 shadow-sm'
-                      : 'border-[#2d3748] bg-[#151c2c] hover:border-[#3d4a5c] hover:shadow-sm'
+                      : 'border-edge bg-surface-deep hover:border-edge-hover hover:shadow-sm'
                   }`}
                 onClick={() => onSelect(type, id)}
                 title={`Fields: ${item.fields ? item.fields.length : (item.partition_fields ? item.partition_fields.length : 0)}`}
               >
                 {isActive && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#2E86C1] text-white text-[0.55rem] font-black px-2 py-0.5 rounded-full shadow-sm tracking-wider z-10">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white text-tiny font-black px-2 py-0.5 rounded-full shadow-sm tracking-wider z-10">
                     ACTIVE
                   </span>
                 )}
-                <span className={`text-[0.6rem] uppercase font-bold block mb-1 tracking-tighter
-                  ${isActive ? 'text-[#2E86C1]' : isSelected ? 'text-amber-600' : 'text-slate-400'}
+                <span className={`text-micro uppercase font-bold block mb-1 tracking-tighter
+                  ${isActive ? 'text-accent' : isSelected ? 'text-amber-600' : 'text-slate-400'}
                 `}>
                   {labelPrefix}
                 </span>
                 <span className={`block text-xl font-black leading-none
-                  ${isActive ? 'text-[#e2e8f0]' : 'text-slate-300'}
+                  ${isActive ? 'text-ink' : 'text-slate-300'}
                 `}>
                   {id}
                 </span>

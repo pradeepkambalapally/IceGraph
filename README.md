@@ -33,10 +33,15 @@ cd docker_demo
 
 Run the docker compose:
 ```
-docker compose up
+docker compose up -d
 ```
 
 Go to `http://localhost:5000` and explore table `default.events` and table `default.logging`.
+
+To rebuild only the IceGraph image after local code changes (without restarting Spark or other services):
+```bash
+docker compose up -d --build icegraph
+```
 
 ## Quick Start Using Docker
 
@@ -66,7 +71,6 @@ docker run -e SPARK_REMOTE=sc://<spark-connect-ip>:15002 -p 5000:5000 icegraph
 
 - npm
 - UV (python)
-- Python 3.9
 - Spark Connect server (Quick setup using https://github.com/YanivZalach/Docker_Spark_Connect_Iceberg)
 
 ### 1. Setup

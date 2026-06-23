@@ -1,24 +1,45 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import ForceGraph2D from 'react-force-graph-2d'
+import { PanelDetailRow, PanelHeader, PANEL_STATUS_BADGE_CLASS } from '../components/PanelContent'
+import {
+  UI_DIALOG_SECTION_TITLE_CLASS,
+  UI_POPUP_HINT_CLASS,
+  UI_TOOLBAR_BUTTON_LAYOUT,
+  toolbarButtonClass,
+} from '../uiTypography'
+import ResizableSidePanel from '../components/ResizableSidePanel'
 import {
   GRAPH_SETTINGS,
   DELETED_DATA_FILE_CONNECTION_COLOR,
   FileType,
+  fileTypeLabel,
 } from '../graphConstants'
-import JSONbig from 'json-bigint'
+import {
+  getNavHeightPx,
+  GRAPH_NODE_FONT_REM,
+  GRAPH_NODE_PADDING_X_REM,
+  GRAPH_NODE_PADDING_Y_REM,
+  PANEL_GUTTER_REM,
+  PANEL_WIDTH_DEFAULT_REM,
+  PANEL_WIDTH_RELAXED_REM,
+  remToPx,
+} from '../layoutConstants'
+import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
 
 const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
 
-const NODE_FONT_SIZE = 80
-const NODE_FONT = `500 ${NODE_FONT_SIZE}px "system-ui"`
-const LINK_FONT_SIZE = 60
-const LINK_FONT = `500 ${LINK_FONT_SIZE}px "system-ui"`
-const NODE_PADDING = 40
 const LINK_CURVATURE = 0.1
 const DELETED_CONNECTION_LABLE = "deleted"
 
-const STICKY_SECTION_LINE_COUNT_COLLAPSE = 15
+function getGraphNodeMetrics() {
+  return {
+    fontSize: remToPx(GRAPH_NODE_FONT_REM),
+    paddingX: remToPx(GRAPH_NODE_PADDING_X_REM),
+    paddingY: remToPx(GRAPH_NODE_PADDING_Y_REM),
+    linkFontSize: remToPx(3.75),
+  }
+}
 
 function getLineage(nodeId, links) {
   const relatedNodes = new Set([String(nodeId)])
@@ -51,51 +72,6 @@ function getLineage(nodeId, links) {
   return relatedNodes
 }
 
-function DetailRow({ r }) {
-  const tryParseJson = (str) => {
-    try { return JSONbig({ storeAsString: true }).parse(str) } catch { return undefined }
-  }
-
-  let displayValue = r.value
-  const parsed = tryParseJson(r.value)
-  if (parsed !== undefined && typeof parsed === 'object' && parsed !== null) {
-    displayValue = JSON.stringify(parsed, null, 2)
-  }
-
-  const lineCount = displayValue.split('\n').length
-  const isCollapsible = lineCount > STICKY_SECTION_LINE_COUNT_COLLAPSE
-  const [isCollapsed, setIsCollapsed] = useState(true)
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <span className="block font-bold text-slate-500 text-[0.65rem] uppercase tracking-wider">
-          {r.label}
-        </span>
-        {isCollapsible && (
-          <button
-            onClick={() => setIsCollapsed(p => !p)}
-            className="text-[0.6rem] font-bold uppercase tracking-wide text-[#2E86C1] hover:text-white transition ml-2 shrink-0"
-          >
-            {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
-          </button>
-        )}
-      </div>
-      <span
-        className="block font-mono bg-[#0d1117] text-slate-200 px-3 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal"
-        style={isCollapsible && isCollapsed ? {
-          maxHeight: '10lh',
-          overflow: 'hidden',
-          maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-        } : {}}
-      >
-        {displayValue}
-      </span>
-    </div>
-  )
-}
-
 export default function GraphPage() {
   const { nodes: rawNodes, edges: rawEdges, errors } = useOutletContext()
 
@@ -109,11 +85,13 @@ export default function GraphPage() {
   const [isFullView, setIsFullView] = useState(true)
   const [stickyNode, setStickyNodeInternal] = useState(null)
   const [movementPopup, setMovementPopup] = useState(null)
+  const [panelLayout, setPanelLayout] = useState({ isFullscreen: false, panelWidthRem: PANEL_WIDTH_DEFAULT_REM })
+  const [nodeMetrics, setNodeMetrics] = useState(getGraphNodeMetrics)
 
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
-    height: window.innerHeight - 70
-  });
+    height: window.innerHeight - getNavHeightPx(),
+  })
 
   const isInspectModeRef = useRef(isInspectMode)
   const highlightNodesRef = useRef(highlightNodes)
@@ -146,14 +124,15 @@ export default function GraphPage() {
 
   useEffect(() => {
     const handleResize = () => {
+      setNodeMetrics(getGraphNodeMetrics())
       setDimensions({
         width: window.innerWidth,
-        height: window.innerHeight - 70
-      });
-    };
+        height: window.innerHeight - getNavHeightPx(),
+      })
+    }
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const graphData = useMemo(() => {
@@ -240,11 +219,16 @@ export default function GraphPage() {
     if (stickyPanelRef.current) stickyPanelRef.current.scrollTop = 0
   }, [])
 
+  const closeStickyPanel = useCallback(() => {
+    setStickyNode(null)
+    setPanelLayout({ isFullscreen: false, panelWidthRem: PANEL_WIDTH_DEFAULT_REM })
+  }, [setStickyNode])
+
   const deselectNode = useCallback(() => {
     setHighlightNodes(new Set())
-    setStickyNode(null)
+    closeStickyPanel()
     history.replaceState({ graphSelection: null }, '')
-  }, [])
+  }, [closeStickyPanel])
 
   const resetView = useCallback(() => {
     deselectNode()
@@ -319,7 +303,7 @@ export default function GraphPage() {
         return
       }
 
-      if (e.key === 'Escape') { setStickyNode(null); return }
+      if (e.key === 'Escape') { closeStickyPanel(); return }
 
       if (isInspectModeRef.current) return
 
@@ -348,7 +332,7 @@ export default function GraphPage() {
       if (stickyScrollRafRef.current) cancelAnimationFrame(stickyScrollRafRef.current)
       if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
     }
-  }, [navigateTo, resetZoom, resetView])
+  }, [navigateTo, resetZoom, resetView, closeStickyPanel])
 
   useEffect(() => {
     if (!history.state || !('graphSelection' in history.state)) {
@@ -443,13 +427,16 @@ export default function GraphPage() {
 
   const paintNode = useCallback((node, ctx) => {
     const label = node.label || String(node.id)
+    const { fontSize, paddingX, paddingY } = nodeMetrics
+    const nodeFont = `500 ${fontSize}px "system-ui"`
 
-    ctx.font = NODE_FONT
-    if (!node.__pillW) {
-      const w = ctx.measureText(label).width + NODE_PADDING * 2
-      const h = NODE_FONT_SIZE + NODE_PADDING
+    ctx.font = nodeFont
+    if (!node.__pillW || node.__metricsKey !== fontSize) {
+      const w = ctx.measureText(label).width + paddingX * 2
+      const h = fontSize + paddingY * 2
       node.__pillW = w
       node.__pillH = h
+      node.__metricsKey = fontSize
     }
 
     const w = node.__pillW
@@ -466,7 +453,7 @@ export default function GraphPage() {
       ctx.rect(x, y, w, h)
     }
 
-    ctx.fillStyle = node.color || '#2d3748'
+    ctx.fillStyle = node.color || getComputedStyle(document.documentElement).getPropertyValue('--color-edge').trim() || '#2d3748'
     ctx.fill()
 
     ctx.strokeStyle = '#ffffff'
@@ -485,14 +472,15 @@ export default function GraphPage() {
     ctx.fillText(label, node.x, node.y)
 
     ctx.lineWidth = 1
-  }, [])
+  }, [nodeMetrics])
 
   const paintPointerArea = useCallback((node, color, ctx) => {
-    const w = node.__pillW || 40
-    const h = node.__pillH || 20
+    const { fontSize, paddingY } = nodeMetrics
+    const w = node.__pillW || remToPx(2.5)
+    const h = node.__pillH || (fontSize + paddingY * 2)
     ctx.fillStyle = color
     ctx.fillRect(node.x - w / 2, node.y - h / 2, w, h)
-  }, [])
+  }, [nodeMetrics])
 
   const linkCurvatures = useMemo(() => {
     const map = new Map()
@@ -524,12 +512,12 @@ export default function GraphPage() {
       qY += (-dx / len) * curvature * len * position
     }
     ctx.shadowBlur = 0
-    ctx.font = LINK_FONT
+    ctx.font = `500 ${nodeMetrics.linkFontSize}px "system-ui"`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#e3f8f5ff'
     ctx.fillText(link.label, qX, qY)
-  }, [linkCurvatures])
+  }, [linkCurvatures, nodeMetrics])
 
   const nodeVisibility = useCallback((n) => {
     const hl = highlightNodesRef.current
@@ -545,22 +533,18 @@ export default function GraphPage() {
   }, [])
 
   const sticky = stickyNode ? {
-    title: stickyNode.details.type, rows: Object.entries(stickyNode.details).map(([label, value]) => ({
+    rows: Object.entries(stickyNode.details).map(([label, value]) => ({
       label,
-      value
-    }))
+      value,
+    })),
   } : null
 
+  const stickyTimestamp = stickyNode?.details?.timestamp
+    ? formatLocaleDateTime(parseUtcDate(stickyNode.details.timestamp))
+    : null
+
   return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{
-        height: 'calc(100vh - 70px)',
-        backgroundColor: '#0d1117',
-        backgroundImage: 'radial-gradient(circle, #2d3748 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
-    >
+    <div className="relative w-full overflow-hidden h-graph bg-graph-grid">
       <ForceGraph2D
         ref={fgRef}
         width={dimensions.width}
@@ -592,13 +576,9 @@ export default function GraphPage() {
         d3AlphaDecay={1}
       />
 
-      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-[200px]">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-[10] font-sans w-52">
         <button
-          className={`w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
-            ${isFullView
-              ? 'bg-[#2E86C1] text-white hover:bg-[#2471a3]'
-              : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
-            }`}
+          className={toolbarButtonClass(isFullView)}
           onClick={() => !isFullView && resetView()}
           onMouseDown={e => e.preventDefault()}
         >
@@ -606,11 +586,11 @@ export default function GraphPage() {
         </button>
 
         <button
-          className={`w-full flex overflow-hidden rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition
-            ${isInspectMode
-              ? 'bg-[#2E86C1] text-white border border-[#2E86C1] hover:bg-[#2471a3]'
-              : 'bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]'
-            }`}
+          className={`${UI_TOOLBAR_BUTTON_LAYOUT} flex overflow-hidden ${
+            isInspectMode
+              ? 'bg-accent text-white border border-accent hover:bg-accent-dark'
+              : 'bg-surface text-accent border border-accent hover:bg-edge'
+          }`}
           onClick={() => setIsInspectMode(p => !p)}
           onMouseDown={e => e.preventDefault()}
         >
@@ -623,7 +603,7 @@ export default function GraphPage() {
         </button>
 
         <button
-          className="w-full py-2.5 rounded-lg cursor-pointer font-bold text-xs uppercase tracking-wide shadow-md transition bg-[#1a202c] text-[#2E86C1] border border-[#2E86C1] hover:bg-[#2d3748]"
+          className={toolbarButtonClass(false)}
           onClick={() => resetZoom()}
           onMouseDown={e => e.preventDefault()}
         >
@@ -633,11 +613,11 @@ export default function GraphPage() {
 
       {movementPopup && (
         <div className="absolute inset-0 flex items-center justify-center z-[1100] pointer-events-none">
-          <div className="bg-[#1a202c]/57 backdrop-blur-md border border-[#2d3748] rounded-xl shadow-2xl p-4 pointer-events-auto w-[70vw] font-sans">
-            <div className="text-[0.65rem] font-bold text-slate-500 uppercase tracking-wider mb-3">
+          <div className="bg-surface/57 backdrop-blur-md border border-edge rounded-xl shadow-2xl p-4 pointer-events-auto w-[70dvw] max-w-4xl font-sans">
+            <div className={UI_DIALOG_SECTION_TITLE_CLASS}>
               {movementPopup.direction === 'in' ? 'Navigate to parent' : 'Navigate to child'}
             </div>
-            <div ref={popupListRef} className="flex flex-col max-h-[60vh] overflow-y-auto">
+            <div ref={popupListRef} className="flex flex-col max-h-[60dvh] overflow-y-auto">
               {movementPopup.nodes.map((node, i) => {
                 const combo = movementPopup.combos[i]
                 const typed = movementPopup.input
@@ -645,13 +625,13 @@ export default function GraphPage() {
                   <button
                     key={node.id}
                     onClick={() => { navigateTo(node); setMovementPopup(null) }}
-                    className="flex items-center gap-3 py-2 px-2 border-b border-[#2d3748] last:border-0 hover:bg-[#252d3d] rounded transition cursor-pointer text-left"
+                    className="flex items-center gap-3 py-2 px-2 border-b border-edge last:border-0 hover:bg-surface-hover rounded transition cursor-pointer text-left"
                   >
-                    <span className="rounded bg-[#2E86C1]/35 text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-[#2E86C1]">
+                    <span className="rounded bg-accent/35 text-xs font-bold font-mono px-1.5 py-0.5 shrink-0 tracking-widest border border-accent">
                       <span className="text-white">{combo.slice(0, typed.length)}</span>
                       <span className="text-white">{combo.slice(typed.length)}</span>
                     </span>
-                    <span className="text-sm text-[#e2e8f0] font-mono">{node.label}</span>
+                    <span className="text-sm text-ink font-mono">{node.label}</span>
                   </button>
                 )
               })}
@@ -661,36 +641,41 @@ export default function GraphPage() {
                 {movementPopup.input || <span className="text-slate-600">type combo…</span>}
               </div>
             )}
-            <div className="text-xs text-slate-400 mt-2">Type combo to select · Esc to cancel</div>
+            <div className={UI_POPUP_HINT_CLASS}>Type combo to select · Esc to cancel</div>
           </div>
         </div>
       )}
 
       {sticky && (
-        <div
+        <ResizableSidePanel
           ref={stickyPanelRef}
-          className="absolute top-4 right-4 w-[400px] max-h-[88vh] overflow-y-auto bg-[#1a202c] border-l-4 rounded-xl z-[1000] shadow-xl"
-          style={{ borderLeftColor: stickyNode.color }}
+          accentColor={stickyNode.color}
+          header={(
+            <PanelHeader
+              title={fileTypeLabel(stickyNode.details.type)}
+              titleColor={stickyNode.color}
+              subtitle={stickyNode.details.file_path}
+              meta={stickyTimestamp || undefined}
+            />
+          )}
+          onClose={closeStickyPanel}
+          onLayoutChange={setPanelLayout}
+          maxContainerWidth={dimensions.width - remToPx(PANEL_GUTTER_REM)}
         >
-          <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-[#2d3748]">
-            <div className="font-bold text-base text-[#e2e8f0] pr-6 leading-snug">{sticky.title.toUpperCase()}</div>
-            <button
-              className="w-7 h-7 rounded-full bg-[#2d3748] text-slate-400 flex items-center justify-center text-base cursor-pointer hover:bg-[#3d4a5c] hover:text-slate-200 transition shrink-0"
-              onClick={() => setStickyNode(null)}
-              onMouseDown={e => e.preventDefault()}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="px-5 py-4 flex flex-col gap-3">
-            {isInspectMode && (
-              <span className="inline-flex items-center gap-1.5 bg-[#2E86C1]/10 text-[#2E86C1] px-2.5 py-1 rounded-md text-[0.65rem] font-bold uppercase tracking-wide w-fit">
-                🔒 Locked View
-              </span>
-            )}
-            {sticky.rows.filter((r) => r.value !== '').map((r, i) => <DetailRow key={i} r={r} />)}
-          </div>
-        </div>
+          {isInspectMode && (
+            <span className={PANEL_STATUS_BADGE_CLASS}>
+              🔒 Locked View
+            </span>
+          )}
+          {sticky.rows.filter((r) => r.value !== '').map((r, i) => (
+            <PanelDetailRow
+              key={i}
+              label={r.label}
+              value={r.value}
+              relaxedCollapse={panelLayout.isFullscreen || panelLayout.panelWidthRem >= PANEL_WIDTH_RELAXED_REM}
+            />
+          ))}
+        </ResizableSidePanel>
       )}
     </div>
   )

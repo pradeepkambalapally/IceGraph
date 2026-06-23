@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { UI_BODY_MUTED_CLASS, UI_FORM_LABEL_MB_CLASS, UI_PAGE_TITLE_CLASS } from '../uiTypography'
 import { parseUtcDate, formatLocaleDateTime } from '../utils/dateUtils'
 
 function SnapshotItem({ ts, id, operation, selectedId, onClick }) {
     const isSelected = selectedId === id
     return (
         <div key={id} data-id={id} onClick={() => onClick(id)}
-            className={`p-3 rounded-lg cursor-pointer border ${isSelected ? 'bg-[#2E86C1] border-[#2E86C1]' : 'bg-[#1a202c] border-[#2d3748]'}`}>
+            className={`p-3 rounded-lg cursor-pointer border ${isSelected ? 'bg-accent border-accent' : 'bg-surface border-edge'}`}>
             <div className="flex justify-between items-start">
                 <div className="text-xs text-slate-300">{ts}</div>
                 {operation && (
-                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${operation === 'overwrite' ? 'bg-blue-950/80 text-blue-400 border border-blue-800' :
+                    <span className={`text-tiny uppercase font-bold px-1.5 py-0.5 rounded ${operation === 'overwrite' ? 'bg-blue-950/80 text-blue-400 border border-blue-800' :
                             operation === 'append' ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800' :
                                 operation === 'replace' ? 'bg-amber-950/80 text-amber-400 border border-amber-800' :
                                     operation === 'delete' ? 'bg-rose-950/80 text-rose-400 border border-rose-800' :
@@ -20,7 +21,7 @@ function SnapshotItem({ ts, id, operation, selectedId, onClick }) {
                     </span>
                 )}
             </div>
-            <div className={`text-[13px] ${isSelected ? 'text-blue-200' : 'text-slate-500'} font-mono mt-1 opacity-75`}>ID: {id}</div>
+            <div className={`text-sm ${isSelected ? 'text-blue-200' : 'text-slate-500'} font-mono mt-1 opacity-75`}>ID: {id}</div>
         </div>
     )
 }
@@ -129,9 +130,9 @@ export default function SnapshotSelectionPage() {
 
     if (loading) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-                <div className="w-10 h-10 border-4 border-slate-700 border-t-[#2E86C1] rounded-full animate-spin mb-4" />
-                <p className="text-sm">Loading snapshots for {tableName}…</p>
+            <div className={`flex-1 flex flex-col items-center justify-center ${UI_BODY_MUTED_CLASS}`}>
+                <div className="w-10 h-10 border-4 border-slate-700 border-t-accent rounded-full animate-spin mb-4" />
+                <p>Loading snapshots for {tableName}…</p>
             </div>
         )
     }
@@ -146,18 +147,18 @@ export default function SnapshotSelectionPage() {
 
     return (
         <div className="flex-1 flex items-center justify-center p-8">
-            <div className="bg-[#1a202c] rounded-2xl shadow-xl p-10 w-full max-w-4xl border border-[#2d3748]">
-                <h2 className="text-xl font-bold text-[#e2e8f0] mb-4">
+            <div className="bg-surface rounded-2xl shadow-xl p-10 w-full max-w-4xl border border-edge">
+                <h2 className={`${UI_PAGE_TITLE_CLASS} mb-4`}>
                     Select Snapshots
                 </h2>
-                <p className="text-slate-400 text-sm mb-6">
+                <p className={`${UI_BODY_MUTED_CLASS} mb-6`}>
                     Choose a range of snapshots to view <strong>{tableName}</strong> (Inclusive)
                 </p>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                     <div className="flex gap-6">
                         <div className="flex-1">
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Start Snapshot</label>
-                            <div ref={startListRef} className="h-72 overflow-y-auto bg-[#2d3748] rounded-xl p-2 space-y-2 scroll-py-4">
+                            <label className={UI_FORM_LABEL_MB_CLASS}>Start Snapshot</label>
+                            <div ref={startListRef} className="h-72 overflow-y-auto bg-edge rounded-xl p-2 space-y-2 scroll-py-4">
                                 {entries.map(([ts, id, operation]) => (
                                     <SnapshotItem
                                         key={id}
@@ -169,17 +170,17 @@ export default function SnapshotSelectionPage() {
                                     />
                                 ))}
                                 <div data-id="" onClick={() => setStartSnapshot('')}
-                                    className={`p-3 rounded-lg cursor-pointer border ${startSnapshot === '' ? 'bg-[#2E86C1] border-[#2E86C1]' : 'bg-[#1a202c] border-[#2d3748]'}`}>
+                                    className={`p-3 rounded-lg cursor-pointer border ${startSnapshot === '' ? 'bg-accent border-accent' : 'bg-surface border-edge'}`}>
                                     <div className="text-xs font-bold text-white">-- Full History --</div>
                                 </div>
                             </div>
                         </div>
 
                         <div className="flex-1">
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">End Snapshot</label>
-                            <div ref={endListRef} className="h-72 overflow-y-auto bg-[#2d3748] rounded-xl p-2 space-y-2 scroll-py-4">
+                            <label className={UI_FORM_LABEL_MB_CLASS}>End Snapshot</label>
+                            <div ref={endListRef} className="h-72 overflow-y-auto bg-edge rounded-xl p-2 space-y-2 scroll-py-4">
                                 <div data-id="" onClick={() => setEndSnapshot('')}
-                                    className={`p-3 rounded-lg cursor-pointer border ${endSnapshot === '' ? 'bg-[#2E86C1] border-[#2E86C1]' : 'bg-[#1a202c] border-[#2d3748]'}`}>
+                                    className={`p-3 rounded-lg cursor-pointer border ${endSnapshot === '' ? 'bg-accent border-accent' : 'bg-surface border-edge'}`}>
                                     <div className="text-xs font-bold text-white">-- Latest --</div>
                                 </div>
                                 {entries.map(([ts, id, operation]) => (
@@ -195,7 +196,7 @@ export default function SnapshotSelectionPage() {
                             </div>
                         </div>
                     </div>
-                    <button ref={submitBtnRef} type="submit" className="w-full bg-[#2E86C1] hover:bg-[#2471a3] py-3 rounded-lg text-white font-bold transition-colors">
+                    <button ref={submitBtnRef} type="submit" className="w-full bg-accent hover:bg-accent-dark py-3 rounded-lg text-white font-bold transition-colors">
                         Generate Graph
                     </button>
                 </form>

@@ -20,6 +20,7 @@ from spark_connect import close_spark_connect_session
 from graph_normalizer.graph_normalizer import GraphNormalizer
 from icegraph_logger import logger
 from snapshot_map.snapshot_mapping import collect_snapshot_map
+from table_catalog.table_list import collect_table_list
 from table_inventory.table_inventory import TableInventory
 from base_classes.utils import verify_iceberg_table
 
@@ -95,6 +96,20 @@ def serve(path):
         return send_from_directory(static_path, path)
 
     return send_from_directory(static_path, "index.html")
+
+
+@app.route("/api/v1/tables", methods=["GET"])
+def list_tables():
+    try:
+        return jsonify({"tables": collect_table_list()})
+
+    except AnalysisException as e:
+        logger.error(f"Spark Error: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 400
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/v1/snapshot-map/<path:table_name>", methods=["GET"])

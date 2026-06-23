@@ -1,3 +1,6 @@
 export const MOCK_HOME_ROUTE = '/table/graph?table=default.events'
-export const MOCK_HOME = `/IceGraph${MOCK_HOME_ROUTE}`
+export const MOCK_TABLE = 'default.events'
+/** Vite `base` without trailing slash; empty string at site root. */
+export const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '')
+export const MOCK_HOME = `${BASE_PATH}${MOCK_HOME_ROUTE}`
 export const IS_MOCK = import.meta.env.VITE_USE_MSW === 'true'
