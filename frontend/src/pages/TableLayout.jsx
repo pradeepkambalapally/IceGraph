@@ -401,11 +401,11 @@ export default function TableLayout() {
                   {Object.entries(errors).map(([op, err], i) => (
                     <div key={`err-${i}`} className="bg-red-950/10 rounded-xl border border-red-900/30 overflow-hidden flex flex-col">
                       <div className="px-5 py-3 border-b border-red-900/10 bg-red-900/5">
-                        <span className="text-micro font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Source</span>
+                        <span className="text-base font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Source</span>
                         <div className="text-xs font-mono text-red-200 break-all">{op}</div>
                       </div>
                       <div className="px-5 py-4">
-                        <span className="text-micro font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
+                        <span className="text-base font-bold text-red-500/70 uppercase tracking-tighter block mb-1">Message</span>
                         <div className="text-xs text-red-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{err}</div>
                       </div>
                     </div>
@@ -422,11 +422,11 @@ export default function TableLayout() {
                   {Object.entries(warnings).map(([op, msg], i) => (
                     <div key={`warn-${i}`} className="bg-amber-950/10 rounded-xl border border-amber-900/30 overflow-hidden flex flex-col">
                       <div className="px-5 py-3 border-b border-amber-900/10 bg-amber-900/5">
-                        <span className="text-micro font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Context</span>
+                        <span className="text-base font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Context</span>
                         <div className="text-xs font-mono text-amber-200 break-all">{op}</div>
                       </div>
                       <div className="px-5 py-4">
-                        <span className="text-micro font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
+                        <span className="text-base font-bold text-amber-500/70 uppercase tracking-tighter block mb-1">Notice</span>
                         <div className="text-xs text-amber-300 font-semibold whitespace-pre-wrap leading-relaxed overflow-y-auto tracking-wide">{msg}</div>
                       </div>
                     </div>

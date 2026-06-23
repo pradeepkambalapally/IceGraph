@@ -51,12 +51,12 @@ function TypeDisplay({ type }) {
           {type.fields.map(f => (
             <div key={f.id || f['field-id'] || f.name} className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-caption font-mono text-slate-500 w-5 text-right shrink-0">
+                <span className="text-base font-mono text-slate-500 w-5 text-right shrink-0">
                   {f.id || f['field-id'] || '—'}
                 </span>
                 <span className="text-sm font-semibold text-ink">{f.name}</span>
                 {f.required === false && (
-                  <span className="text-micro font-bold text-slate-600 uppercase">optional</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase">optional</span>
                 )}
               </div>
               <TypeDisplay type={f.type} />
@@ -88,11 +88,11 @@ function TypeDisplay({ type }) {
         </span>
         <div className="ml-3 border-l-2 border-edge pl-4 flex flex-col gap-3 py-1">
           <div className="flex items-start gap-2">
-            <span className="text-micro font-bold text-slate-500 uppercase mt-1 shrink-0 w-10 text-right">Key</span>
+            <span className="text-xs font-bold text-slate-500 uppercase mt-1 shrink-0 w-10 text-right">Key</span>
             <TypeDisplay type={type.key} />
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-micro font-bold text-slate-500 uppercase mt-1 shrink-0 w-10 text-right">Value</span>
+            <span className="text-xs font-bold text-slate-500 uppercase mt-1 shrink-0 w-10 text-right">Value</span>
             <TypeDisplay type={type.value} />
           </div>
         </div>
@@ -111,12 +111,12 @@ function FieldRow({ field }) {
   return (
     <div className="py-4 border-b border-edge last:border-0">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 mb-3">
-        <span className="text-xs font-mono text-slate-500 w-10 text-right shrink-0 tabular-nums">
+        <span className="text-base font-mono text-slate-500 w-10 text-right shrink-0 tabular-nums">
           {field['field-id'] ?? field.id ?? '—'}
         </span>
         <span className="text-sm font-bold text-ink-bright min-w-0">{field.name}</span>
         {field.required === false ? (
-          <span className="text-micro font-bold text-slate-400 uppercase shrink-0">optional</span>
+          <span className="text-xs font-bold text-slate-400 uppercase shrink-0">optional</span>
         ) : (
           <span />
         )}
@@ -204,7 +204,7 @@ export default function MetadataPage() {
               i
             </div>
             <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-surface text-slate-300 text-detail p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 leading-relaxed">
-              <strong className="text-accent block mb-1 uppercase tracking-wide text-caption">Partial Metadata</strong>
+              <strong className="text-accent block mb-1 uppercase tracking-wide text-base">Partial Metadata</strong>
               The following fields are stripped/altered by the backend due to size:
               <ul className="mt-1.5 flex flex-col gap-0.5">
                 {['metadata-log', 'snapshot-log', 'snapshots', 'statistics'].map(f => (
@@ -247,13 +247,13 @@ export default function MetadataPage() {
             {defaultSpec.fields?.length > 0 ? (
               <div>
                 <div className="flex items-center gap-x-4 pb-1 mb-1 border-b border-edge">
-                  <span className="text-micro font-bold text-slate-500 uppercase w-10 text-right shrink-0">#</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase min-w-30 shrink-0">Name</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase shrink-0">Transform</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase w-10 text-right shrink-0">#</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase min-w-30 shrink-0">Name</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase shrink-0">Transform</span>
                 </div>
                 {defaultSpec.fields.map((f, i) => (
                   <div key={i} className="flex items-center gap-x-4 py-2 border-b border-edge last:border-0">
-                    <span className="text-caption font-mono text-slate-500 w-10 text-right shrink-0 tabular-nums">{f['field-id'] ?? i}</span>
+                    <span className="text-base font-mono text-slate-500 w-10 text-right shrink-0 tabular-nums">{f['field-id'] ?? i}</span>
                     <span className="text-sm font-semibold text-ink min-w-30 shrink-0">{f.name}</span>
                     <span className="text-xs font-mono text-accent bg-accent-muted px-2 py-0.5 rounded shrink-0">{f.transform}</span>
                   </div>
@@ -270,9 +270,9 @@ export default function MetadataPage() {
             {defaultOrder.fields?.length > 0 ? (
               <div>
                 <div className="grid grid-cols-[1fr_120px_120px] pb-1 mb-1 border-b border-edge">
-                  <span className="text-micro font-bold text-slate-500 uppercase">Transform</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase">Direction</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase">Nulls</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Transform</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Direction</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Nulls</span>
                 </div>
                 {defaultOrder.fields.map((f, i) => (
                   <div key={i} className="grid grid-cols-[1fr_120px_120px] py-2 border-b border-edge last:border-0 items-center">
@@ -294,7 +294,7 @@ export default function MetadataPage() {
               {refs.map(([name, ref]) => (
                 <div key={name} className="flex items-center gap-3 py-2 border-b border-edge last:border-0">
                   <span className="text-sm font-semibold text-ink min-w-25">{name}</span>
-                  <span className="text-micro font-bold uppercase px-2 py-0.5 rounded bg-edge text-slate-400">{ref.type}</span>
+                  <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-edge text-slate-400">{ref.type}</span>
                   <span className={`${UI_MONO_MUTED_CLASS} ml-auto`}>{ref['snapshot-id']}</span>
                 </div>
               ))}
@@ -320,9 +320,9 @@ export default function MetadataPage() {
             {currentSchema.fields?.length > 0 ? (
               <div>
                 <div className="flex items-center gap-3 pb-1 mb-1 border-b border-edge">
-                  <span className="text-micro font-bold text-slate-500 uppercase w-6 text-right shrink-0">#</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase min-w-30">Name</span>
-                  <span className="text-micro font-bold text-slate-500 uppercase">Type</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase w-6 text-right shrink-0">#</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase min-w-30">Name</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Type</span>
                 </div>
                 {currentSchema.fields.map(f => <FieldRow key={f['field-id'] ?? f.name} field={f} />)}
               </div>

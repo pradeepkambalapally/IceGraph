@@ -7,7 +7,7 @@ export default function MetadataStructured({ metadata, onSelect, selectedId }) {
       <div className="mb-6">
         <div className={UI_STRUCTURED_SECTION_TITLE_CLASS}>
           <span>{labelPrefix} History</span>
-          <span className="text-micro font-medium normal-case bg-edge px-2 py-0.5 rounded-full text-slate-400">
+          <span className="text-xs font-medium normal-case bg-edge px-2 py-0.5 rounded-full text-slate-400">
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </span>
         </div>
@@ -31,11 +31,11 @@ export default function MetadataStructured({ metadata, onSelect, selectedId }) {
                 title={`Fields: ${item.fields ? item.fields.length : (item.partition_fields ? item.partition_fields.length : 0)}`}
               >
                 {isActive && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white text-tiny font-black px-2 py-0.5 rounded-full shadow-sm tracking-wider z-10">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-black px-2 py-0.5 rounded-full shadow-sm tracking-wider z-10">
                     ACTIVE
                   </span>
                 )}
-                <span className={`text-micro uppercase font-bold block mb-1 tracking-tighter
+                <span className={`text-xs uppercase font-bold block mb-1 tracking-tighter
                   ${isActive ? 'text-accent' : isSelected ? 'text-amber-600' : 'text-slate-400'}
                 `}>
                   {labelPrefix}

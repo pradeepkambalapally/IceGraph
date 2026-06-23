@@ -17,7 +17,7 @@ export const UI_ERROR_TEXT_SPACED_CLASS = `mt-2 ${UI_ERROR_TEXT_CLASS}`
 
 // Uppercase field labels (caption size, slate-500)
 export const UI_FIELD_LABEL_CLASS =
-  'text-caption font-bold text-slate-500 uppercase tracking-wider'
+  'text-xs font-bold text-slate-500 uppercase tracking-wider'
 
 export const UI_FIELD_LABEL_WIDE_CLASS = `${UI_FIELD_LABEL_CLASS} tracking-widest`
 
@@ -98,10 +98,10 @@ export const UI_PAGE_TITLE_CLASS = 'text-xl font-bold text-ink'
 export const UI_DIALOG_TITLE_CLASS = 'font-bold text-ink text-sm'
 
 export const UI_STRUCTURED_SECTION_TITLE_CLASS =
-  'text-caption font-black text-slate-400 uppercase tracking-[0.1em] mb-3 border-b border-edge pb-1.5 flex justify-between items-center'
+  'text-base font-black text-slate-400 uppercase tracking-[0.1em] mb-3 border-b border-edge pb-1.5 flex justify-between items-center'
 
 export const UI_FILE_COUNT_BADGE_CLASS =
-  'text-caption font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full'
+  'text-base font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full'
 
 export const UI_COPYABLE_VALUE_CLASS =
   'block text-sm text-ink break-all pl-3 pr-9 py-2'

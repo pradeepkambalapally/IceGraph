@@ -25,14 +25,14 @@ export const PANEL_VALUE_CLASS =
   'block font-mono bg-canvas text-slate-200 pl-3 pr-9 py-2 rounded-lg text-xs whitespace-pre overflow-x-auto break-normal'
 
 export const PANEL_COLLAPSE_TOGGLE_CLASS =
-  'text-micro font-bold uppercase tracking-wide text-accent hover:text-white transition shrink-0'
+  'text-xs font-bold uppercase tracking-wide text-accent hover:text-white transition shrink-0'
 
 export const PANEL_STATUS_BADGE_CLASS =
-  'inline-flex items-center gap-1.5 bg-accent/10 text-accent px-2.5 py-1 rounded-md text-caption font-bold uppercase tracking-wide w-fit'
+  'inline-flex items-center gap-1.5 bg-accent/10 text-accent px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide w-fit'
 
 export const PANEL_EMPTY_MESSAGE_CLASS = UI_BODY_MUTED_ITALIC_CLASS
 
-export const PANEL_DIFF_COMPARE_LABEL_CLASS = 'text-micro font-semibold mb-0.5'
+export const PANEL_DIFF_COMPARE_LABEL_CLASS = 'text-xs font-semibold mb-0.5'
 
 export const PANEL_DIFF_BEFORE_LABEL_CLASS = `${PANEL_DIFF_COMPARE_LABEL_CLASS} text-red-400/90`
 
