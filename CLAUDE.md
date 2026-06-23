@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never run git commands — only the user does.
 - When a change affects the user interface (behavior, navigation, interactions, views), update the relevant section in `frontend/src/pages/DocsPage.jsx`.
 - The Issues panel content (errors and warnings) is driven entirely by the backend response (`data.errors`, `data.warnings`). UI changes to this panel must be coordinated with backend error/warning emission logic.
+- Whenever creating a constant that is settable via an environment variable, define its default value in `backend/constants.py` and add its description to `README.md`.
 
 ## Project Overview
 
