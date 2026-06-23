@@ -539,10 +539,6 @@ export default function GraphPage() {
     })),
   } : null
 
-  const stickyTimestamp = stickyNode?.details?.timestamp
-    ? formatLocaleDateTime(parseUtcDate(stickyNode.details.timestamp))
-    : null
-
   return (
     <div className="relative w-full overflow-hidden h-graph bg-graph-grid">
       <ForceGraph2D
@@ -586,11 +582,10 @@ export default function GraphPage() {
         </button>
 
         <button
-          className={`${UI_TOOLBAR_BUTTON_LAYOUT} flex overflow-hidden ${
-            isInspectMode
-              ? 'bg-accent text-white border border-accent hover:bg-accent-dark'
-              : 'bg-surface text-accent border border-accent hover:bg-edge'
-          }`}
+          className={`${UI_TOOLBAR_BUTTON_LAYOUT} flex overflow-hidden ${isInspectMode
+            ? 'bg-accent text-white border border-accent hover:bg-accent-dark'
+            : 'bg-surface text-accent border border-accent hover:bg-edge'
+            }`}
           onClick={() => setIsInspectMode(p => !p)}
           onMouseDown={e => e.preventDefault()}
         >
@@ -654,8 +649,6 @@ export default function GraphPage() {
             <PanelHeader
               title={fileTypeLabel(stickyNode.details.type)}
               titleColor={stickyNode.color}
-              subtitle={stickyNode.details.file_path}
-              meta={stickyTimestamp || undefined}
             />
           )}
           onClose={closeStickyPanel}
