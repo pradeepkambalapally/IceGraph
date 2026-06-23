@@ -140,7 +140,7 @@ function DiffRow({ label, before, after }) {
         <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
           {label.replace(/_/g, ' ')}
         </span>
-        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-detail overflow-x-auto shadow-2xl flex flex-col">
+        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-xs overflow-x-auto shadow-2xl flex flex-col">
           <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
           <div className="flex flex-col">
             {allKeys.map(key => {
