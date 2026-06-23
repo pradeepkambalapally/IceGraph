@@ -49,12 +49,23 @@ export const PANEL_DIFF_AFTER_VALUE_CLASS =
 
 const DEFAULT_COLLAPSE_LINES = 15
 
+const colorParseCtx = document.createElement('canvas').getContext('2d')
+
+function stripAlpha(color) {
+  if (typeof color !== 'string') return color
+  colorParseCtx.fillStyle = color
+  const m = colorParseCtx.fillStyle.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+
+  return m ? `rgb(${m[1]}, ${m[2]}, ${m[3]})` : colorParseCtx.fillStyle
+}
+
 export function PanelHeader({ title, titleColor, subtitle, meta }) {
+  const opaqueColor = stripAlpha(titleColor)
   return (
     <div className="min-w-0 pr-4">
       <div
         className={PANEL_TITLE_CLASS}
-        style={titleColor ? { color: titleColor } : undefined}
+        style={opaqueColor ? { color: opaqueColor } : undefined}
       >
         {title}
       </div>
@@ -123,11 +134,11 @@ export function PanelDetailRow({
           style={
             isCollapsible && isCollapsed
               ? {
-                  maxHeight: relaxedCollapse ? '22lh' : '10lh',
-                  overflow: 'hidden',
-                  maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                }
+                maxHeight: relaxedCollapse ? '22lh' : '10lh',
+                overflow: 'hidden',
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+              }
               : {}
           }
         >
