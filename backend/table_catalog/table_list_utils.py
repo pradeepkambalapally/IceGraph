@@ -7,9 +7,7 @@ from pyspark.sql import SparkSession
 from base_classes.utils import qualify_table_name
 from constants import TABLE_LIST_INCLUDE_SESSION_CATALOG
 
-table_list_include_session_catalog = os.getenv(
-    "TABLE_LIST_INCLUDE_SESSION_CATALOG", TABLE_LIST_INCLUDE_SESSION_CATALOG
-).lower() not in ("0", "false", "no", "off")
+table_list_include_session_catalog = str(os.getenv("TABLE_LIST_INCLUDE_SESSION_CATALOG", TABLE_LIST_INCLUDE_SESSION_CATALOG)).lower() == "true"
 
 
 def get_spark_catalog_config_value(spark: SparkSession, catalog: str, suffix: str) -> Optional[str]:
@@ -101,17 +99,13 @@ def collect_table_candidates(spark: SparkSession) -> set[str]:
             for table in list_tables(spark, catalog, database):
                 if table.isTemporary:
                     continue
-                candidates.add(
-                    qualify_table_name(catalog, database, table.name, default_catalog_name)
-                )
+                candidates.add(qualify_table_name(catalog, database, table.name, default_catalog_name))
 
     return candidates
 
 
 def catalogs_are_iceberg_only(spark: SparkSession, catalog_names: list[str]) -> bool:
-    included_catalogs = [
-        catalog for catalog in catalog_names if should_include_catalog(spark, catalog)
-    ]
+    included_catalogs = [catalog for catalog in catalog_names if should_include_catalog(spark, catalog)]
     if not included_catalogs:
         return False
     return all(is_iceberg_spark_catalog(spark, catalog) for catalog in included_catalogs)

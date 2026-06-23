@@ -60,11 +60,7 @@ def verify_iceberg_table(table_name: str) -> bool:
     spark = SparkSession.builder.getOrCreate()
 
     with suppress(AnalysisException, AttributeError, IndexError):
-        provider_row = (
-            spark.sql(f"DESCRIBE FORMATTED {table_name}")
-            .filter(F.col("col_name") == "Provider")
-            .collect()
-        )
+        provider_row = spark.sql(f"DESCRIBE FORMATTED {table_name}").filter(F.col("col_name") == "Provider").collect()
         if provider_row:
             return provider_row[0].data_type.lower().strip() == "iceberg"
 
