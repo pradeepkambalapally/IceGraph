@@ -103,6 +103,8 @@ If you want to change the default values of the application, you can set the fol
 - `MAX_DATA_FILES_TO_COLLECT`: The maximum number of data files to collect. Default is 5000.
 - `MAX_SNAPSHOTS_TO_COMPUTE`: The maximum number of snapshots to compute. Default is 50.
 - `MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS`: The time to wait before forcing an exit of the application when shutting it down. Default is 10.
+- `TABLE_LIST_INCLUDE_SESSION_CATALOG`: Whether to include the Spark session catalog (catalog that is not exclusively Iceberg tables) in the table selection autocompletion. Default is true.
+- `TABLE_LIST_CACHE_TTL_SECONDS`: The cache time-to-live for table selection autocompletion endpoint before refresh. Default is 60.
 
 ### 3. Run
 
