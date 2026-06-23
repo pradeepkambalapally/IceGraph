@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { MOCK_HOME_ROUTE, IS_MOCK } from './appConstants'
 import NavBar from './components/NavBar'
 import { TableSpecsProvider } from './context/TableSpecsContext'
-import { UI_BODY_MUTED_CLASS } from './uiTypography'
+import logo from './assets/icegraph.png'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const SnapshotSelectionPage = lazy(() => import('./pages/SnapshotSelectionPage'))
@@ -16,8 +16,18 @@ const FileTreePage = lazy(() => import('./pages/FileTreePage'))
 
 function PageLoader() {
   return (
-    <div className={`flex-1 flex items-center justify-center ${UI_BODY_MUTED_CLASS}`}>
-      Loading…
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-5 bg-canvas">
+      <img
+        src={logo}
+        alt="IceGraph"
+        className="h-28 w-28 object-contain"
+      />
+      <div className="flex items-center gap-1 text-lg font-medium tracking-wide text-slate-300">
+        <span>Loading</span>
+        <span className="animate-bounce [animation-delay:-0.3s]">.</span>
+        <span className="animate-bounce [animation-delay:-0.15s]">.</span>
+        <span className="animate-bounce">.</span>
+      </div>
     </div>
   )
 }
