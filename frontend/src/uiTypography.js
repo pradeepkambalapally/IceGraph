@@ -98,7 +98,7 @@ export const UI_PAGE_TITLE_CLASS = 'text-xl font-bold text-ink'
 export const UI_DIALOG_TITLE_CLASS = 'font-bold text-ink text-sm'
 
 export const UI_STRUCTURED_SECTION_TITLE_CLASS =
-  'text-base font-black text-slate-400 uppercase tracking-[0.1em] mb-3 border-b border-edge pb-1.5 flex justify-between items-center'
+  'text-sm font-black text-slate-400 uppercase tracking-normal mb-3 border-b border-edge pb-1.5 flex justify-between items-center'
 
 export const UI_FILE_COUNT_BADGE_CLASS =
   'text-base font-bold bg-edge text-slate-400 px-2 py-0.5 rounded-full'
