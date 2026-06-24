@@ -55,11 +55,9 @@ class TableListCatalog:
 
         catalogs = list_catalog_names(self._spark)
         included_catalogs = filter_catalogs_to_include(self._spark, catalogs)
-
         databases = collect_databases_in_catalogs(self._spark, included_catalogs)
 
         tables = collect_catalogs_tables_names(self._spark, databases)
-
         spark_default_catalog = get_spark_default_catalog(self._spark)
         clean_tables = sorted([table.removeprefix(f"{spark_default_catalog}.") for table in tables])
 
