@@ -286,7 +286,11 @@ function SnapSummary({ summary }) {
 function DiffList({ diff }) {
   const rows = diff.filter(({ key }) => key !== 'type')
   return rows.length > 0
-    ? rows.map(({ key, before, after }) => <DiffRow key={key} label={key} before={before} after={after} />)
+    ? (
+      <div className="flex flex-col gap-4">
+        {rows.map(({ key, before, after }) => <DiffRow key={key} label={key} before={before} after={after} />)}
+      </div>
+    )
     : <p className={UI_BODY_MUTED_ITALIC_CLASS}>No tracked field changes detected.</p>
 }
 
