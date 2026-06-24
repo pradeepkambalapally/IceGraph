@@ -15,7 +15,7 @@ from constants import (
     MAX_NUMBER_OF_GRAPHS_TO_COMPUTE,
     MAX_SNAPSHOTS_TO_SHOW,
     MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS,
-    TABLE_LIST_INCLUDE_SESSION_CATALOG,
+    INCLUDE_NONE_ICEBERG_CATALOGS,
 )
 from spark_connect import close_spark_connect_session
 from graph_normalizer.graph_normalizer import GraphNormalizer
@@ -35,7 +35,7 @@ max_number_of_graphs_to_compute = int(os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE
 compute_cleanup_time_seconds = int(os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS))
 max_snapshots_to_show = int(os.getenv("MAX_SNAPSHOTS_TO_SHOW", MAX_SNAPSHOTS_TO_SHOW))
 max_graceful_shutdown_time_seconds = int(os.getenv("MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS", MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS))
-table_list_include_session_catalog = str(os.getenv("TABLE_LIST_INCLUDE_SESSION_CATALOG", TABLE_LIST_INCLUDE_SESSION_CATALOG)).lower() == "true"
+include_none_iceberg_catalogs = str(os.getenv("INCLUDE_NONE_ICEBERG_CATALOGS", INCLUDE_NONE_ICEBERG_CATALOGS)).lower() == "true"
 
 executor_pool = ThreadPoolExecutor(max_workers=max_number_of_graphs_to_compute)
 
@@ -105,7 +105,12 @@ def list_tables():
     try:
         tables = TableListCatalog().collect()
 
-        return jsonify({"tables": tables})
+        return jsonify(
+            {
+                "tables": tables,
+                "include_none_iceberg_catalogs": include_none_iceberg_catalogs,
+            }
+        )
 
     except AnalysisException as e:
         logger.error(f"Spark Error: {e}\n{traceback.format_exc()}")

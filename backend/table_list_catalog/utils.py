@@ -5,9 +5,9 @@ from contextlib import suppress
 from typing import Optional
 
 from pyspark.sql import SparkSession
-from constants import TABLE_LIST_INCLUDE_SESSION_CATALOG
+from constants import INCLUDE_NONE_ICEBERG_CATALOGS
 
-table_list_include_session_catalog = str(os.getenv("TABLE_LIST_INCLUDE_SESSION_CATALOG", TABLE_LIST_INCLUDE_SESSION_CATALOG)).lower() == "true"
+include_none_iceberg_catalogs = str(os.getenv("INCLUDE_NONE_ICEBERG_CATALOGS", INCLUDE_NONE_ICEBERG_CATALOGS)).lower() == "true"
 
 
 def get_spark_catalog_config_value(spark: SparkSession, catalog: str) -> Optional[str]:
@@ -25,7 +25,7 @@ def filter_catalogs_to_include(spark: SparkSession, catalogs: list[str]) -> list
     for catalog in catalogs:
         catalog_config_value = get_spark_catalog_config_value(spark, catalog)
 
-        if table_list_include_session_catalog or is_iceberg_spark_catalog(catalog_config_value):
+        if include_none_iceberg_catalogs or is_iceberg_spark_catalog(catalog_config_value):
             catalogs_to_include.append(catalog)
 
     return catalogs_to_include
