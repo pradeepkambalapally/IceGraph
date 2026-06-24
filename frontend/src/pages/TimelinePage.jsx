@@ -23,6 +23,7 @@ import { FileType } from '../graphConstants'
 import JSONbig from 'json-bigint'
 import { parseUtcDate } from '../utils/dateUtils'
 import { parseSummary } from '../utils/snapshotUtils'
+import { bindMouseScrollHandoff } from '../utils/smoothScroll'
 
 const COLOR_A = '#1964B9'
 const COLOR_B = '#6437D2'
@@ -323,8 +324,10 @@ export default function TimelinePage() {
       }
     }
     window.addEventListener('keydown', handleKey)
+    const unbindHandoff = bindMouseScrollHandoff(() => popupScrollRef.current, popupScrollTargetRef, popupScrollRafRef)
     return () => {
       window.removeEventListener('keydown', handleKey)
+      unbindHandoff()
       if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
     }
   }, [])
