@@ -1,8 +1,7 @@
+from spark_connect import open_spark_connect_session
 import json
 from contextlib import suppress
 from typing import Any, Dict, List
-
-from pyspark.sql import SparkSession
 
 
 def format_schemas_to_full_dict(schemas: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -19,7 +18,7 @@ def format_schemas_to_full_dict(schemas: List[Dict[str, Any]]) -> List[Dict[str,
 
 
 def get_json_metadata_from_path(metadata_path: str) -> Dict[str, Any]:
-    spark = SparkSession.builder.getOrCreate()
+    spark = open_spark_connect_session()
 
     row = (
         spark.read.option("multiLine", True)

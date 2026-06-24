@@ -57,7 +57,7 @@ def qualify_table_name(catalog: str, namespace: str, table: str, default_catalog
 
 
 def verify_iceberg_table(table_name: str) -> bool:
-    spark = SparkSession.builder.getOrCreate()
+    spark = open_spark_connect_session()
 
     with suppress(AnalysisException, AttributeError, IndexError):
         provider_row = spark.sql(f"DESCRIBE FORMATTED {table_name}").filter(F.col("col_name") == "Provider").collect()

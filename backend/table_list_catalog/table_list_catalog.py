@@ -2,6 +2,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
+from dataclasses import dataclass
 from typing import Optional
 
 from pyspark.errors import AnalysisException
@@ -9,7 +10,7 @@ from pyspark.errors import AnalysisException
 from base_classes.utils import timed, verify_iceberg_table
 from constants import TABLE_LIST_CACHE_TTL_SECONDS
 from spark_connect import open_spark_connect_session
-from table_catalog.table_list_utils import (
+from table_list_catalog.utils import (
     catalogs_are_iceberg_only,
     collect_table_candidates,
     default_catalog,
@@ -19,8 +20,14 @@ from table_catalog.table_list_utils import (
 table_list_cache_ttl_seconds = int(os.getenv("TABLE_LIST_CACHE_TTL_SECONDS", TABLE_LIST_CACHE_TTL_SECONDS))
 
 
-class TableListCollector:
-    _cache: Optional[tuple[float, list[str]]] = None
+@dataclass
+class CacheEntry:
+    timestamp: float
+    tables: list[str]
+
+
+class TableListCatalog:
+    _cache: Optional[CacheEntry] = None
 
     def __init__(self):
         self._spark = open_spark_connect_session()
@@ -28,8 +35,8 @@ class TableListCollector:
     @timed
     def collect(self) -> list[str]:
         now = time.time()
-        if TableListCollector._cache and now - TableListCollector._cache[0] < table_list_cache_ttl_seconds:
-            return TableListCollector._cache[1]
+        if TableListCatalog._cache and now - TableListCatalog._cache.timestamp < table_list_cache_ttl_seconds:
+            return TableListCatalog._cache.tables
 
         candidates, iceberg_only = self._collect_candidates()
         if iceberg_only:
@@ -37,7 +44,7 @@ class TableListCollector:
         else:
             result = sorted(self._filter_iceberg_tables(candidates))
 
-        TableListCollector._cache = (now, result)
+        TableListCatalog._cache = CacheEntry(now, result)
         return result
 
     def _collect_candidates(self) -> tuple[set[str], bool]:
@@ -73,7 +80,3 @@ class TableListCollector:
             verify_iceberg_table(table_name)
             return True
         return False
-
-
-def collect_table_list() -> list[str]:
-    return TableListCollector().collect()
