@@ -6,6 +6,7 @@ export const handlers = [
   http.get('/api/v1/tables', () => {
     return HttpResponse.json({
       tables: ['default.events'],
+      include_none_iceberg_catalogs: false
     })
   }),
 
