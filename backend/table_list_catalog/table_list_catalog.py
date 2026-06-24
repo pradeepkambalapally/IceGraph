@@ -1,82 +1,62 @@
 import os
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import suppress
+import threading
+import arrow
 from dataclasses import dataclass
 from typing import Optional
 
-from pyspark.errors import AnalysisException
-
-from base_classes.utils import timed, verify_iceberg_table
+from base_classes.utils import timed
 from constants import TABLE_LIST_CACHE_TTL_SECONDS
 from spark_connect import open_spark_connect_session
-from table_list_catalog.utils import (
-    catalogs_are_iceberg_only,
-    collect_table_candidates,
-    default_catalog,
-    list_catalog_names,
-)
+from table_list_catalog.utils import collect_catalogs_tables_names, collect_databases_in_catalogs, list_catalog_names, filter_catalogs_to_include
 
 table_list_cache_ttl_seconds = int(os.getenv("TABLE_LIST_CACHE_TTL_SECONDS", TABLE_LIST_CACHE_TTL_SECONDS))
 
 
 @dataclass
 class CacheEntry:
-    timestamp: float
+    timestamp: arrow.Arrow
     tables: list[str]
 
 
 class TableListCatalog:
     _cache: Optional[CacheEntry] = None
+    _cache_write_lock = threading.Lock()
 
     def __init__(self):
         self._spark = open_spark_connect_session()
 
     @timed
     def collect(self) -> list[str]:
-        now = time.time()
-        if TableListCatalog._cache and now - TableListCatalog._cache.timestamp < table_list_cache_ttl_seconds:
-            return TableListCatalog._cache.tables
+        fresh_tables = self._fresh_cached_tables()
 
-        candidates, iceberg_only = self._collect_candidates()
-        if iceberg_only:
-            result = sorted(candidates)
-        else:
-            result = sorted(self._filter_iceberg_tables(candidates))
+        if fresh_tables is not None:
+            return fresh_tables
 
-        TableListCatalog._cache = CacheEntry(now, result)
-        return result
+        with TableListCatalog._cache_write_lock:
+            fresh_tables = self._fresh_cached_tables()
+            if fresh_tables is not None:
+                return fresh_tables
 
-    def _collect_candidates(self) -> tuple[set[str], bool]:
-        default_catalog_name = default_catalog(self._spark)
-        catalogs = list_catalog_names(self._spark, default_catalog_name)
-        candidates = collect_table_candidates(self._spark)
-        iceberg_only = catalogs_are_iceberg_only(self._spark, catalogs)
-        return candidates, iceberg_only
+            cache_entry = self._collect_candidates()
+            TableListCatalog._cache = cache_entry
 
-    def _filter_iceberg_tables(self, candidates: set[str]) -> list[str]:
-        if not candidates:
-            return []
-
-        if len(candidates) == 1:
-            table = next(iter(candidates))
-            return [table] if self._table_is_iceberg(table) else []
-
-        loadable: list[str] = []
-        max_workers = min(len(candidates), 8)
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(self._table_is_iceberg, table): table for table in candidates}
-            for future in as_completed(futures):
-                table = futures[future]
-                if future.result():
-                    loadable.append(table)
-
-        return loadable
+        return cache_entry.tables
 
     @staticmethod
-    def _table_is_iceberg(table_name: str) -> bool:
-        with suppress(AnalysisException):
-            verify_iceberg_table(table_name)
-            return True
-        return False
+    def _fresh_cached_tables() -> Optional[list[str]]:
+        cache = TableListCatalog._cache
+        if cache and (arrow.utcnow() - cache.timestamp).total_seconds() < table_list_cache_ttl_seconds:
+            return cache.tables
+        return None
+
+    def _collect_candidates(self) -> CacheEntry:
+        run_time = arrow.utcnow()
+
+        catalogs = list_catalog_names(self._spark)
+        included_catalogs = filter_catalogs_to_include(self._spark, catalogs)
+
+        databases = collect_databases_in_catalogs(self._spark, included_catalogs)
+
+        tables = collect_catalogs_tables_names(self._spark, databases)
+
+        return CacheEntry(run_time, sorted(tables))

@@ -8,7 +8,6 @@ from contextlib import suppress
 import arrow
 from pyspark.errors import AnalysisException
 from pyspark.sql import functions as F
-from pyspark.sql import SparkSession
 
 from icegraph_logger import logger
 
@@ -37,23 +36,6 @@ def timed(fn):
         return result
 
     return wrapper
-
-
-def get_spark_row_value(row, *names):
-    for name in names:
-        value = getattr(row, name, None)
-        if value is None and hasattr(row, "__getitem__"):
-            with suppress(Exception):
-                value = row[name]
-        if value is not None:
-            return value
-    return None
-
-
-def qualify_table_name(catalog: str, namespace: str, table: str, default_catalog: str) -> str:
-    if catalog == default_catalog:
-        return f"{namespace}.{table}"
-    return f"{catalog}.{namespace}.{table}"
 
 
 def verify_iceberg_table(table_name: str) -> bool:
