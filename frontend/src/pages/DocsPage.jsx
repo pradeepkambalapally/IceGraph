@@ -194,7 +194,8 @@ const SECTIONS = [
           <p>
             Click a timeline event to open its details in a panel on the right — the same panel used in
             Graph view. Drag the left-edge grip to widen it, use fullscreen to expand, and copy field
-            values with the clipboard icon.
+            values with the clipboard icon. Long JSON diffs are collapsed by default and can be expanded
+            or collapsed with <strong className="text-white">Show all</strong> / <strong className="text-white">Collapse</strong>.
           </p>
         </div>
       </div>

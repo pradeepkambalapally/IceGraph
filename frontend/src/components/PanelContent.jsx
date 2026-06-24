@@ -47,7 +47,7 @@ export const PANEL_DIFF_BEFORE_VALUE_CLASS =
 export const PANEL_DIFF_AFTER_VALUE_CLASS =
   `${PANEL_DIFF_VALUE_BASE_CLASS} bg-green-950/30 border border-green-900/40 text-green-300`
 
-const DEFAULT_COLLAPSE_LINES = 15
+export const DEFAULT_COLLAPSE_LINES = 15
 
 const colorParseCtx = document.createElement('canvas').getContext('2d')
 

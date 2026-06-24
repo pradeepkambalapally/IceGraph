@@ -11,6 +11,8 @@ import {
   PANEL_DIFF_BEFORE_VALUE_CLASS,
   PANEL_FIELD_LABEL_CLASS,
   PANEL_FIELD_LABEL_WIDE_CLASS,
+  PANEL_COLLAPSE_TOGGLE_CLASS,
+  DEFAULT_COLLAPSE_LINES,
 } from '../components/PanelContent'
 import {
   UI_BODY_MUTED_ITALIC_CLASS,
@@ -123,6 +125,7 @@ function contentNaturalSize(content, zoom) {
 }
 
 function DiffRow({ label, before, after }) {
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const tryParse = (val) => {
     if (!val) return null
     try {
@@ -136,12 +139,42 @@ function DiffRow({ label, before, after }) {
 
   if (beforeObj && afterObj) {
     const allKeys = Array.from(new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)])).sort()
+    const lineCount = allKeys.reduce((n, key) => {
+      const bVal = beforeObj[key]
+      const aVal = afterObj[key]
+      const changed = bVal !== undefined && aVal !== undefined && JSON.stringify(bVal) !== JSON.stringify(aVal)
+      return n + (changed ? 2 : 1)
+    }, 2)
+    const isCollapsible = lineCount > DEFAULT_COLLAPSE_LINES
     return (
       <div className="flex flex-col gap-2">
-        <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
-          {label.replace(/_/g, ' ')}
-        </span>
-        <div className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-xs overflow-x-auto shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between gap-2">
+          <span className={`block ${PANEL_FIELD_LABEL_WIDE_CLASS}`}>
+            {label.replace(/_/g, ' ')}
+          </span>
+          {isCollapsible && (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(p => !p)}
+              className={PANEL_COLLAPSE_TOGGLE_CLASS}
+            >
+              {isCollapsed ? `▼ Show all (${lineCount} lines)` : '▲ Collapse'}
+            </button>
+          )}
+        </div>
+        <div
+          className="bg-diff-bg border border-edge rounded-lg py-3 font-mono text-xs overflow-x-auto shadow-2xl flex flex-col"
+          style={
+            isCollapsible && isCollapsed
+              ? {
+                maxHeight: `${DEFAULT_COLLAPSE_LINES}lh`,
+                overflow: 'hidden',
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+              }
+              : {}
+          }
+        >
           <div className="px-4 py-0.5 text-slate-500 opacity-40">{"{"}</div>
           <div className="flex flex-col">
             {allKeys.map(key => {
