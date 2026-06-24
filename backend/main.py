@@ -15,12 +15,13 @@ from constants import (
     MAX_NUMBER_OF_GRAPHS_TO_COMPUTE,
     MAX_SNAPSHOTS_TO_SHOW,
     MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS,
+    INCLUDE_NONE_ICEBERG_CATALOGS,
 )
 from spark_connect import close_spark_connect_session
 from graph_normalizer.graph_normalizer import GraphNormalizer
 from icegraph_logger import logger
 from snapshot_map.snapshot_mapping import collect_snapshot_map
-from table_catalog.table_list import collect_table_list
+from table_list_catalog.table_list_catalog import TableListCatalog
 from table_inventory.table_inventory import TableInventory
 from base_classes.utils import verify_iceberg_table
 
@@ -34,6 +35,7 @@ max_number_of_graphs_to_compute = int(os.getenv("MAX_NUMBER_OF_GRAPHS_TO_COMPUTE
 compute_cleanup_time_seconds = int(os.getenv("COMPUTE_CLEANUP_TIME_SECONDS", COMPUTE_CLEANUP_TIME_SECONDS))
 max_snapshots_to_show = int(os.getenv("MAX_SNAPSHOTS_TO_SHOW", MAX_SNAPSHOTS_TO_SHOW))
 max_graceful_shutdown_time_seconds = int(os.getenv("MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS", MAX_GRACEFUL_SHUTDOWN_TIME_SECONDS))
+include_none_iceberg_catalogs = str(os.getenv("INCLUDE_NONE_ICEBERG_CATALOGS", INCLUDE_NONE_ICEBERG_CATALOGS)).lower() == "true"
 
 executor_pool = ThreadPoolExecutor(max_workers=max_number_of_graphs_to_compute)
 
@@ -101,7 +103,14 @@ def serve(path):
 @app.route("/api/v1/tables", methods=["GET"])
 def list_tables():
     try:
-        return jsonify({"tables": collect_table_list()})
+        tables = TableListCatalog().collect()
+
+        return jsonify(
+            {
+                "tables": tables,
+                "include_none_iceberg_catalogs": include_none_iceberg_catalogs,
+            }
+        )
 
     except AnalysisException as e:
         logger.error(f"Spark Error: {e}\n{traceback.format_exc()}")

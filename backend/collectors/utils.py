@@ -1,8 +1,10 @@
 from contextlib import suppress
 
 import arrow
-from pyspark.sql import SparkSession, functions as F
+from pyspark.sql import functions as F
 from pyspark.sql.types import ArrayType, StringType
+
+from spark_connect import open_spark_connect_session
 
 
 def format_partition(partition_dict: dict) -> str:
@@ -22,7 +24,7 @@ def format_partition(partition_dict: dict) -> str:
 
 
 def get_metadata_row_slim_df_from_path(metadata_path: str):
-    spark = SparkSession.builder.getOrCreate()
+    spark = open_spark_connect_session()
     df = spark.read.option("multiLine", True).json(metadata_path)
     df = df.withColumn("pointed_metadata_log_count", F.size(F.col("metadata-log")))
 

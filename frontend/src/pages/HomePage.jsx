@@ -17,6 +17,7 @@ export default function HomePage() {
   const [tableName, setTableName] = useState('')
   const [history, setHistory] = useState([])
   const [catalogTables, setCatalogTables] = useState(null)
+  const [includeNoneIcebergCatalogs, setIncludeNoneIcebergCatalogs] = useState(false)
   const [catalogFilter, setCatalogFilter] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState(null)
@@ -50,6 +51,7 @@ export default function HomePage() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to fetch tables')
       setCatalogTables(data.tables ?? [])
+      setIncludeNoneIcebergCatalogs(Boolean(data.include_none_iceberg_catalogs))
     } catch (e) {
       setCatalogError(e.message)
       setCatalogTables(null)
@@ -116,6 +118,7 @@ export default function HomePage() {
                 onSelect={selectCatalogTable}
                 filter={catalogFilter}
                 onFilterChange={setCatalogFilter}
+                includeNoneIcebergCatalogs={includeNoneIcebergCatalogs}
               />
             </div>
 

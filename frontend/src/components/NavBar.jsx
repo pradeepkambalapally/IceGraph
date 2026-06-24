@@ -25,6 +25,7 @@ export default function NavBar() {
   const [tablePickerOpen, setTablePickerOpen] = useState(false)
   const [pickerTableName, setPickerTableName] = useState('')
   const [catalogTables, setCatalogTables] = useState(null)
+  const [includeNoneIcebergCatalogs, setIncludeNoneIcebergCatalogs] = useState(false)
   const [catalogFilter, setCatalogFilter] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState(null)
@@ -90,6 +91,7 @@ export default function NavBar() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to fetch tables')
       setCatalogTables(data.tables ?? [])
+      setIncludeNoneIcebergCatalogs(Boolean(data.include_none_iceberg_catalogs))
     } catch (e) {
       setCatalogError(e.message)
       setCatalogTables(null)
@@ -165,6 +167,7 @@ export default function NavBar() {
           filter={catalogFilter}
           onFilterChange={setCatalogFilter}
           listClassName="max-h-40"
+          includeNoneIcebergCatalogs={includeNoneIcebergCatalogs}
         />
       </div>
       <button
@@ -222,6 +225,8 @@ export default function NavBar() {
 
         <NavLink
           to="/docs"
+          target={isTablePage ? '_blank' : undefined}
+          rel={isTablePage ? 'noopener noreferrer' : undefined}
           className="flex items-center gap-2 select-none shrink-0 rounded-md px-1 -ml-1 hover:bg-surface-hover transition"
           title="IceGraph documentation"
         >

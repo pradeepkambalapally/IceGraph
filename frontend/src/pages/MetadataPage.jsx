@@ -10,6 +10,7 @@ import {
   UI_MONO_MUTED_CLASS,
 } from '../uiTypography'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
+import { bindMouseScrollHandoff } from '../utils/smoothScroll'
 import { parseSummary } from '../utils/snapshotUtils'
 
 function Section({ title, children }) {
@@ -153,7 +154,8 @@ export default function MetadataPage() {
       else if (e.key === 'k') { e.preventDefault(); scroll(-80) }
     }
     window.addEventListener('keydown', handleKey)
-    return () => { window.removeEventListener('keydown', handleKey); if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+    const unbindHandoff = bindMouseScrollHandoff(() => window, scrollTargetRef, rafRef)
+    return () => { window.removeEventListener('keydown', handleKey); unbindHandoff(); if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [])
 
   if (!metadata) return null

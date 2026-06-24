@@ -120,7 +120,7 @@ Backend environment variables (set in `backend/.env`):
 | `MAX_DATA_FILES_TO_COLLECT` | 5000 | Data file iteration limit |
 | `MAX_NUMBER_OF_GRAPHS_TO_COMPUTE` | 15 | Concurrent job limit |
 | `MAX_SNAPSHOTS_TO_SHOW` | 2000 | Snapshot selection UI limit |
-| `TABLE_LIST_INCLUDE_SESSION_CATALOG` | `true` | Include Spark session catalog in `/api/v1/tables` |
+| `INCLUDE_NONE_ICEBERG_CATALOGS` | `true` | Include non-Iceberg catalogs (e.g. Spark session catalog) in `/api/v1/tables` |
 | `TABLE_LIST_CACHE_TTL_SECONDS` | 60 | Cache TTL for table list endpoint |
 
 ## Deployment Notes

@@ -65,7 +65,7 @@ const SECTIONS = [
           <p>
             From the Home page, type the fully-qualified name of your Iceberg table
             (e.g. <code className="bg-surface-hover px-1.5 py-0.5 rounded text-[#7dd3fc] text-sm">database.table_name</code>) and press Enter or click Continue.
-            You can also click <strong className="text-white">Browse catalog</strong> to list Iceberg tables from the Spark catalog. Use the filter field to narrow the list when many tables are available. Only tables that IceGraph can load (verified via the same metadata path used for visualization) are shown.
+            You can also click <strong className="text-white">Browse catalog</strong> to list Iceberg tables from the Spark catalog. Use the filter field to narrow the list when many tables are available. When the non-Iceberg catalogs are included, the list notes that non-Iceberg tables may also appear.
           </p>
         </div>
         <div className="space-y-2">
@@ -194,7 +194,8 @@ const SECTIONS = [
           <p>
             Click a timeline event to open its details in a panel on the right — the same panel used in
             Graph view. Drag the left-edge grip to widen it, use fullscreen to expand, and copy field
-            values with the clipboard icon.
+            values with the clipboard icon. Long JSON diffs are collapsed by default and can be expanded
+            or collapsed with <strong className="text-white">Show all</strong> / <strong className="text-white">Collapse</strong>.
           </p>
         </div>
       </div>

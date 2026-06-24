@@ -26,6 +26,7 @@ import {
   remToPx,
 } from '../layoutConstants'
 import { formatLocaleDateTime, parseUtcDate } from '../utils/dateUtils'
+import { bindMouseScrollHandoff } from '../utils/smoothScroll'
 
 const POPUP_KEYS = 'abdefgmnopqstuvwxyz'
 
@@ -327,8 +328,12 @@ export default function GraphPage() {
       }
     }
     window.addEventListener('keydown', handleKey)
+    const unbindSticky = bindMouseScrollHandoff(() => stickyPanelRef.current, stickyScrollTargetRef, stickyScrollRafRef)
+    const unbindPopup = bindMouseScrollHandoff(() => popupListRef.current, popupScrollTargetRef, popupScrollRafRef)
     return () => {
       window.removeEventListener('keydown', handleKey)
+      unbindSticky()
+      unbindPopup()
       if (stickyScrollRafRef.current) cancelAnimationFrame(stickyScrollRafRef.current)
       if (popupScrollRafRef.current) cancelAnimationFrame(popupScrollRafRef.current)
     }
