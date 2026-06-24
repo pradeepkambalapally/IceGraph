@@ -222,6 +222,8 @@ export default function NavBar() {
 
         <NavLink
           to="/docs"
+          target={isTablePage ? '_blank' : undefined}
+          rel={isTablePage ? 'noopener noreferrer' : undefined}
           className="flex items-center gap-2 select-none shrink-0 rounded-md px-1 -ml-1 hover:bg-surface-hover transition"
           title="IceGraph documentation"
         >
