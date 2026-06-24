@@ -128,7 +128,7 @@ export function PanelDetailRow({
         )}
       </div>
       <div className="relative">
-        {hasValue && <CopyIconButton text={textToCopy} className="absolute top-2 right-2 z-10" />}
+        {hasValue && <CopyIconButton text={textToCopy} className="absolute top-1 right-2 z-10" />}
         <span
           className={PANEL_VALUE_CLASS}
           style={
