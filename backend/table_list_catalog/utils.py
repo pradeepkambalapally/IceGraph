@@ -10,6 +10,13 @@ from constants import INCLUDE_NONE_ICEBERG_CATALOGS
 include_none_iceberg_catalogs = str(os.getenv("INCLUDE_NONE_ICEBERG_CATALOGS", INCLUDE_NONE_ICEBERG_CATALOGS)).lower() == "true"
 
 
+def get_spark_default_catalog(spark: SparkSession) -> str:
+    with suppress(Exception):
+        return spark.catalog.currentCatalog()
+
+    return "spark_catalog"
+
+
 def get_spark_catalog_config_value(spark: SparkSession, catalog: str) -> Optional[str]:
     with suppress(Exception):
         return spark.conf.get(f"spark.sql.catalog.{catalog}")

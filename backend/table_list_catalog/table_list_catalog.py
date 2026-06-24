@@ -1,3 +1,4 @@
+from table_list_catalog.utils import get_spark_default_catalog
 import os
 import threading
 import arrow
@@ -59,4 +60,7 @@ class TableListCatalog:
 
         tables = collect_catalogs_tables_names(self._spark, databases)
 
-        return CacheEntry(run_time, sorted(tables))
+        spark_default_catalog = get_spark_default_catalog(self._spark)
+        clean_tables = sorted([table.removeprefix(f"{spark_default_catalog}.") for table in tables])
+
+        return CacheEntry(run_time, clean_tables)
