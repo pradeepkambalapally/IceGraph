@@ -63,7 +63,7 @@ def collect_databases_in_catalogs(spark: SparkSession, catalogs: List[str]) -> L
 def collect_catalogs_tables_names(spark: SparkSession, databases: List[str]) -> List[str]:
     tables_df = None
     for database in databases:
-        df = spark.sql(f"show tables in {database}").withColumn("table", F.concat(F.lit(f"{database}."), F.col("tableName"))).select("table")
+        df = spark.sql(f"show tables in {database}").withColumn("table", F.concat(F.lit(f"{database}."), F.col("tableName"))).select("table", "isTemporary")
         if tables_df is None:
             tables_df = df
         else:
@@ -72,4 +72,4 @@ def collect_catalogs_tables_names(spark: SparkSession, databases: List[str]) -> 
     if tables_df is None:
         return []
 
-    return [row.table for row in tables_df.filter(F.col("isTemporary") == False).collect()]
+    return [row.table for row in tables_df.filter(F.col("isTemporary") == False).select("table").collect()]
