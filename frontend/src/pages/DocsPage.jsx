@@ -328,6 +328,7 @@ const SECTIONS = [
         <div className="space-y-1">
           <h3 className="text-white font-semibold mb-2">Timeline View</h3>
           <ShortcutRow keys={['Shift', 'Scroll']} desc="Pan the timeline horizontally" />
+          <ShortcutRow keys={['r']} desc="Center and zoom to fit the entire timeline" />
           <ShortcutRow keys={['h', '←']} desc="Select the previous snapshot — if none is selected, jumps to the first (oldest)" />
           <ShortcutRow keys={['l', '→']} desc="Select the next snapshot — if none is selected, jumps to the last (newest)" />
           <ShortcutRow keys={['j', '↓']} desc="Scroll the snapshot details panel down" />

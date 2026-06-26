@@ -309,6 +309,7 @@ export default function TimelinePage() {
   const popupScrollTargetRef = useRef(0)
   const popupScrollRafRef = useRef(null)
   const viewAnimRafRef = useRef(null)
+  const fitTimelineRef = useRef(null)
 
   useEffect(() => {
     const animatePopupScroll = () => {
@@ -359,6 +360,10 @@ export default function TimelinePage() {
         const idx = evts.indexOf(selectedRef.current)
         if (idx < 0) setSelected(evts[evts.length - 1])
         else if (idx < evts.length - 1) setSelected(evts[idx + 1])
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        fitTimelineRef.current?.()
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -477,6 +482,7 @@ export default function TimelinePage() {
       panY: (viewport.clientHeight - height * fitZoom) / 2,
     })
   }
+  fitTimelineRef.current = fitTimeline
 
   useEffect(() => {
     selectedRef.current = selected
