@@ -308,6 +308,7 @@ export default function TimelinePage() {
   const popupScrollRef = useRef(null)
   const popupScrollTargetRef = useRef(0)
   const popupScrollRafRef = useRef(null)
+  const viewAnimRafRef = useRef(null)
 
   useEffect(() => {
     const animatePopupScroll = () => {
@@ -440,6 +441,25 @@ export default function TimelinePage() {
     return { events: timeline, snapshotMap: snapMap }
   }, [nodes])
 
+  const animateToView = (target, duration = 450) => {
+    if (viewAnimRafRef.current) cancelAnimationFrame(viewAnimRafRef.current)
+    const { zoom: startZoom, panX: startPanX, panY: startPanY } = view
+    const startTime = performance.now()
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+    const step = (now) => {
+      const t = Math.min(1, (now - startTime) / duration)
+      const e = easeOutCubic(t)
+      setView({
+        zoom: startZoom + (target.zoom - startZoom) * e,
+        panX: startPanX + (target.panX - startPanX) * e,
+        panY: startPanY + (target.panY - startPanY) * e,
+      })
+      if (t < 1) viewAnimRafRef.current = requestAnimationFrame(step)
+      else viewAnimRafRef.current = null
+    }
+    viewAnimRafRef.current = requestAnimationFrame(step)
+  }
+
   const fitTimeline = () => {
     const viewport = viewportRef.current
     const content = contentRef.current
@@ -451,7 +471,7 @@ export default function TimelinePage() {
       (viewport.clientWidth - padding) / width,
       (viewport.clientHeight - padding) / height,
     )
-    setView({
+    animateToView({
       zoom: fitZoom,
       panX: (viewport.clientWidth - width * fitZoom) / 2,
       panY: (viewport.clientHeight - height * fitZoom) / 2,
@@ -470,6 +490,10 @@ export default function TimelinePage() {
     const id = requestAnimationFrame(fitTimeline)
     return () => cancelAnimationFrame(id)
   }, [events.length])
+
+  useEffect(() => () => {
+    if (viewAnimRafRef.current) cancelAnimationFrame(viewAnimRafRef.current)
+  }, [])
 
   useEffect(() => {
     const viewport = viewportRef.current
