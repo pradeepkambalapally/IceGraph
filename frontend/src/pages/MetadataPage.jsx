@@ -249,7 +249,7 @@ export default function MetadataPage() {
             {defaultSpec.fields?.length > 0 ? (
               <div>
                 <div className="flex items-center gap-x-4 pb-1 mb-1 border-b border-edge">
-                  <span className="text-xs font-bold text-slate-500 uppercase w-10 text-right shrink-0">id</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase w-10 text-right shrink-0">ID</span>
                   <span className="text-xs font-bold text-slate-500 uppercase min-w-30 shrink-0">Name</span>
                   <span className="text-xs font-bold text-slate-500 uppercase min-w-20 shrink-0">Source ID</span>
                   <span className="text-xs font-bold text-slate-500 uppercase shrink-0">Transform</span>
